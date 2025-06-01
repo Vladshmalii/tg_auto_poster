@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: telegram_bot
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://telegram_user:password123@postgres:5432/telegram_bot
+      - REDIS_URL=redis://redis:6379/0
+      - BOT_TOKEN=${BOT_TOKEN}
+      - CRYPTOBOT_TOKEN=${CRYPTOBOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ADMIN_IDS=${ADMIN_IDS}
+    volumes:
+      - ./:/app
+      - ./logs:/app/logs
+    command: python main.py
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15
+    container_name: telegram_bot_db
+    environment:
+      - POSTGRES_USER=telegram_user
+      - POSTGRES_PASSWORD=password123
+      - POSTGRES_DB=telegram_bot
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: telegram_bot_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  celery_worker:
+    build: .
+    container_name: telegram_bot_celery
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://telegram_user:password123@postgres:5432/telegram_bot
+      - REDIS_URL=redis://redis:6379/0
+      - BOT_TOKEN=${BOT_TOKEN}
+    volumes:
+      - ./:/app
+      - ./logs:/app/logs
+    command: celery -A celery_app worker --loglevel=info
+    restart: unless-stopped
+
+  adminer:
+    image: adminer
+    container_name: telegram_bot_adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:
+  redis_data:
