@@ -4,18 +4,26 @@ import logging
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.redis import RedisStorage
 from config.settings import settings
-from bot.handlers import start, test_posting, subscription, faq, admin
+from bot.handlers import start, test_posting, subscription, faq, admin, profile
 from database.database import engine
 from database.models import Base
 from dotenv import load_dotenv
 import os
 
+# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+
+logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.pool').setLevel(logging.WARNING)
+logging.getLogger('sqlalchemy.dialects').setLevel(logging.WARNING)
+
+logging.getLogger('aiogram').setLevel(logging.INFO)
+logging.getLogger('root').setLevel(logging.INFO)
+
 logger = logging.getLogger(__name__)
-# Загрузите .env файл явно
 load_dotenv()
 
 # Проверьте что переменная загрузилась
@@ -39,6 +47,8 @@ async def main():
     dp.include_router(subscription.router)
     dp.include_router(faq.router)
     dp.include_router(admin.router)
+    dp.include_router(profile.router)
+
 
     logger.info("🤖 Бот запущен!")
 

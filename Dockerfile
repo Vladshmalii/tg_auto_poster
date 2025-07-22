@@ -1,26 +1,35 @@
 ﻿FROM python:3.11-slim
 
-WORKDIR /app
-
-# ��⠭�������� ��⥬�� ����ᨬ���
+# Установка системных зависимостей
 RUN apt-get update && apt-get install -y \
     gcc \
-    libpq-dev \
+    g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# �����㥬 requirements � ��⠭�������� ����ᨬ���
+# Создание рабочей директории
+WORKDIR /app
+
+# Копирование requirements.txt
 COPY requirements.txt .
+
+# Установка Python зависимостей
 RUN pip install --no-cache-dir -r requirements.txt
 
-# �����㥬 ��� �ਫ������
+# Копирование всего проекта
 COPY . .
 
-# ������� ��४��� ��� �����
-RUN mkdir -p logs
+# Установка переменных окружения
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
 
-# ������� ���ਢ�����஢������ ���짮��⥫�
-RUN useradd --create-home --shell /bin/bash app \
-    && chown -R app:app /app
-USER app
+# Создание необходимых директорий
+RUN mkdir -p /app/logs /app/beat /app/backups
+
+# Установка прав
+RUN chmod -R 755 /app
+
+# Создание пользователя для безопасности (опционально)
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
 
 CMD ["python", "main.py"]

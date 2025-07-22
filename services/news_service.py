@@ -107,6 +107,21 @@ class NewsService:
             ]
         }
 
+    async def get_news_by_category(self, category: str, limit: int = 1) -> List[NewsItem]:
+        """Получает новости по категории (для совместимости с AutopostService)"""
+        try:
+            news_items = []
+
+            for _ in range(limit):
+                news_item = await self.get_random_news(category)
+                if news_item:
+                    news_items.append(news_item)
+
+            return news_items
+        except Exception as e:
+            logging.error(f"Ошибка получения новостей для категории {category}: {e}")
+            return []
+
     async def get_random_news(self, category: str) -> Optional[NewsItem]:
         """Получает случайную новость по категории"""
         try:
@@ -158,6 +173,56 @@ class NewsService:
         except Exception as e:
             logging.error(f"Общая ошибка получения новостей: {e}")
             return None
+
+    async def get_multiple_news(self, category: str, limit: int = 5) -> List[NewsItem]:
+        """Получает несколько новостей из разных источников"""
+        try:
+            sources = self.sources.get(category, [])
+            if not sources:
+                return []
+
+            news_items = []
+
+            # Пробуем получить новости из разных источников
+            for source_url in sources[:limit]:
+                try:
+                    timeout = aiohttp.ClientTimeout(total=10)
+                    async with aiohttp.ClientSession(timeout=timeout) as session:
+                        async with session.get(source_url) as response:
+                            if response.status == 200:
+                                rss_content = await response.text()
+                                feed = feedparser.parse(rss_content)
+
+                                if feed.entries:
+                                    # Берем первую новость из каждого источника
+                                    entry = feed.entries[0]
+                                    description = self._clean_html(entry.get('summary', ''))
+
+                                    news_item = NewsItem(
+                                        title=entry.title,
+                                        description=description,
+                                        url=entry.link,
+                                        published_at=entry.get('published', '')
+                                    )
+
+                                    news_items.append(news_item)
+
+                                    if len(news_items) >= limit:
+                                        break
+
+                except Exception as e:
+                    logging.error(f"Ошибка получения новостей из {source_url}: {e}")
+                    continue
+
+            return news_items
+
+        except Exception as e:
+            logging.error(f"Ошибка получения множественных новостей: {e}")
+            return []
+
+    def get_available_categories(self) -> List[str]:
+        """Возвращает список доступных категорий"""
+        return list(self.sources.keys())
 
     def _clean_html(self, text: str) -> str:
         """Очищает текст от HTML тегов"""

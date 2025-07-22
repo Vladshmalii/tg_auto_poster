@@ -17,8 +17,8 @@ class Settings:
 
     OPENAI_API_KEY: str = field(default_factory=lambda: os.getenv('OPENAI_API_KEY', ''))
 
-    logging.info(f"🔧 DEBUG: Raw ADMIN_IDS env var: '{os.getenv('ADMIN_IDS')}'")
-    logging.info(f"🔧 DEBUG: All env vars: {dict(os.environ)}")
+    TIMEZONE: str = field(default_factory=lambda: os.getenv('TIMEZONE', 'Europe/Moscow'))
+    CELERY_ENABLE_UTC: bool = field(default_factory=lambda: os.getenv('CELERY_ENABLE_UTC', 'False').lower() == 'true')
 
     ADMIN_IDS: List[int] = field(default_factory=lambda: [
         int(x.strip()) for x in os.getenv('ADMIN_IDS', '').split(',')
@@ -38,5 +38,6 @@ class Settings:
     })
 
     WELCOME_IMAGE_URL: str = field(default='https://imgpx.com/JkQSWcWjA2IL.png')
+
 
 settings = Settings()

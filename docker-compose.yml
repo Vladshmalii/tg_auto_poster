@@ -14,9 +14,12 @@ services:
       - CRYPTOBOT_TOKEN=${CRYPTOBOT_TOKEN}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ADMIN_IDS=${ADMIN_IDS}
+      - PYTHONPATH=/app
+      - TZ=Europe/Moscow
     volumes:
       - ./:/app
       - ./logs:/app/logs
+    working_dir: /app
     command: python main.py
     restart: unless-stopped
 
@@ -27,6 +30,7 @@ services:
       - POSTGRES_USER=telegram_user
       - POSTGRES_PASSWORD=password123
       - POSTGRES_DB=telegram_bot
+      - TZ=Europe/Moscow
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -37,6 +41,8 @@ services:
     image: redis:7-alpine
     container_name: telegram_bot_redis
     command: redis-server --appendonly yes
+    environment:
+      - TZ=Europe/Moscow
     volumes:
       - redis_data:/data
     ports:
@@ -53,10 +59,36 @@ services:
       - DATABASE_URL=postgresql://telegram_user:password123@postgres:5432/telegram_bot
       - REDIS_URL=redis://redis:6379/0
       - BOT_TOKEN=${BOT_TOKEN}
+      - CRYPTOBOT_TOKEN=${CRYPTOBOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PYTHONPATH=/app
+      - TZ=Europe/Moscow
     volumes:
       - ./:/app
       - ./logs:/app/logs
-    command: celery -A celery_app worker --loglevel=info
+    working_dir: /app
+    command: celery -A celery_app worker --loglevel=info --pool=solo --concurrency=1
+    restart: unless-stopped
+
+  celery_beat:
+    build: .
+    container_name: telegram_bot_celery_beat
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://telegram_user:password123@postgres:5432/telegram_bot
+      - REDIS_URL=redis://redis:6379/0
+      - BOT_TOKEN=${BOT_TOKEN}
+      - CRYPTOBOT_TOKEN=${CRYPTOBOT_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PYTHONPATH=/app
+      - TZ=Europe/Moscow
+    volumes:
+      - ./:/app
+      - ./logs:/app/logs
+    working_dir: /app
+    command: celery -A celery_app beat --loglevel=info --schedule=/tmp/celerybeat-schedule --pidfile=/tmp/celerybeat.pid
     restart: unless-stopped
 
   adminer:

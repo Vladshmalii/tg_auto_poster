@@ -19,6 +19,7 @@ class User(Base):
     subscriptions = relationship("Subscription", back_populates="user")
     autopost_settings = relationship("AutopostSettings", back_populates="user")
     test_post_limits = relationship("TestPostLimit", back_populates="user")
+    post_logs = relationship("PostLog", back_populates="user")
 
 
 class Subscription(Base):
@@ -90,5 +91,27 @@ class TestPostLimit(Base):
     __table_args__ = (
         Index('idx_test_post_limits_user_created', 'user_id', 'created_at'),
         Index('idx_test_post_limits_user_date', 'user_id', 'test_date'),
+        {'extend_existing': True}
+    )
+
+
+class PostLog(Base):
+    __tablename__ = 'post_logs'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    channel_id = Column(String(255), nullable=False)
+    category = Column(String(100), nullable=False)
+    style = Column(String(50), nullable=False)
+    post_type = Column(String(20), default='manual')
+    success = Column(Boolean, default=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(Date, default=date.today)
+
+    user = relationship("User", back_populates="post_logs")
+
+    __table_args__ = (
+        Index('idx_post_logs_user_date', 'user_id', 'created_at'),
+        Index('idx_post_logs_user_channel_date', 'user_id', 'channel_id', 'created_at'),
         {'extend_existing': True}
     )

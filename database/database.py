@@ -5,7 +5,8 @@ from config.settings import settings
 # Создаем асинхронный движок
 engine = create_async_engine(
     settings.DATABASE_URL.replace('postgresql://', 'postgresql+asyncpg://'),
-    echo=True
+    echo=False,
+    pool_pre_ping=True
 )
 
 # Создаем фабрику сессий
