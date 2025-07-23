@@ -22,31 +22,30 @@ class UserStates(StatesGroup):
 
 
 class AdminStates(StatesGroup):
-    """Состояния для админ панели"""
     main_menu = State()
 
-    # Управление пользователями
+    
     adding_subscription = State()
     disabling_subscription = State()
     searching_user = State()
 
-    # Управление источниками
+    
     adding_source = State()
     deleting_source = State()
 
-    # Управление категориями
+    
     adding_category = State()
     deleting_category = State()
 
-    # Управление API токенами
+    
     creating_token = State()
     deleting_token = State()
 
-    # Управление сайтами
+    
     adding_site = State()
     deleting_site = State()
 
-    # Просмотр данных
+    
     viewing_stats = State()
     viewing_users = State()
     viewing_logs = State()

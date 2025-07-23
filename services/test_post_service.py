@@ -17,7 +17,7 @@ class TestPostService:
             user = user_result.scalar_one_or_none()
 
             if not user:
-                return False, "Пользователь не найден"
+                return False, "User not found"
 
             subscription_result = await db.execute(
                 select(Subscription).where(
@@ -53,13 +53,13 @@ class TestPostService:
                     hours = int(time_left.total_seconds() // 3600)
                     minutes = int((time_left.total_seconds() % 3600) // 60)
 
-                    return False, f"⏰ Вы уже использовали тестовый пост!\n\nСледующий тест будет доступен через {hours}ч {minutes}м.\n\n💎 Хотите больше постов? Приобретите подписку!"
+                    return False, f"⏰ You have already used your test post!\n\nNext test will be available in {hours}h {minutes}m.\n\n💎 Want more posts? Purchase a subscription!"
 
             return True, ""
 
         except Exception as e:
-            logging.error(f"Ошибка проверки лимита тестового поста: {e}")
-            return False, "Ошибка проверки лимита"
+            logging.error(f"Error checking test post limit: {e}")
+            return False, "Error checking limit"
 
     @staticmethod
     async def record_test_post(db: AsyncSession, user_telegram_id: int,
@@ -83,10 +83,10 @@ class TestPostService:
                 db.add(test_post_limit)
                 await db.commit()
 
-                logging.info(f"Записан тестовый пост для пользователя {user_telegram_id}")
+                logging.info(f"Test post recorded for user {user_telegram_id}")
 
         except Exception as e:
-            logging.error(f"Ошибка записи тестового поста: {e}")
+            logging.error(f"Error recording test post: {e}")
             await db.rollback()
 
     @staticmethod
@@ -119,5 +119,5 @@ class TestPostService:
             return None
 
         except Exception as e:
-            logging.error(f"Ошибка получения информации о тестовом посте: {e}")
+            logging.error(f"Error getting test post information: {e}")
             return None

@@ -15,7 +15,6 @@ router = Router()
 
 
 async def safe_edit_message(callback: CallbackQuery, text: str, reply_markup=None):
-    """Безопасное редактирование сообщения с учетом типа контента"""
     try:
         if callback.message.photo:
             await callback.message.edit_caption(
@@ -30,7 +29,7 @@ async def safe_edit_message(callback: CallbackQuery, text: str, reply_markup=Non
                 parse_mode='HTML'
             )
     except Exception as e:
-        logging.warning(f"Не удалось отредактировать сообщение: {e}")
+        logging.warning(f"Failed to edit message: {e}")
         try:
             await callback.message.delete()
             await callback.message.answer(
@@ -39,7 +38,7 @@ async def safe_edit_message(callback: CallbackQuery, text: str, reply_markup=Non
                 parse_mode='HTML'
             )
         except Exception:
-            # Если и это не сработало, просто отправляем новое сообщение
+            
             await callback.bot.send_message(
                 chat_id=callback.message.chat.id,
                 text=text,
@@ -49,7 +48,6 @@ async def safe_edit_message(callback: CallbackQuery, text: str, reply_markup=Non
 
 
 async def send_text_only(callback: CallbackQuery, text: str, reply_markup=None):
-    """Отправляет текстовое сообщение, удаляя предыдущее (даже если оно с фото)"""
     try:
         await callback.message.delete()
         await callback.message.answer(
@@ -58,8 +56,8 @@ async def send_text_only(callback: CallbackQuery, text: str, reply_markup=None):
             parse_mode='HTML'
         )
     except Exception as e:
-        logging.warning(f"Не удалось удалить сообщение: {e}")
-        # Если не удалось удалить, просто отправляем новое
+        logging.warning(f"Failed to delete message: {e}")
+        
         await callback.bot.send_message(
             chat_id=callback.message.chat.id,
             text=text,
@@ -81,27 +79,27 @@ async def start_command(message: Message, state: FSMContext):
                 new_user = User(
                     telegram_id=message.from_user.id,
                     username=message.from_user.username,
-                    language='ru'
+                    language='en'
                 )
                 db.add(new_user)
                 await db.commit()
 
                 welcome_text = (
-                    f"🎉 <b>Добро пожаловать в NewsBot, {message.from_user.first_name}!</b>\n\n"
-                    "🤖 Я помогу вам автоматически публиковать новости в ваш Telegram-канал.\n\n"
-                    "🔥 <b>Возможности:</b>\n"
-                    "• 📰 Автопостинг новостей по категориям\n"
-                    "• 🎨 Разные стили оформления\n"
-                    "• ⏰ Настройка расписания публикаций\n"
-                    "• 🧪 Бесплатное тестирование\n\n"
-                    "Выберите действие:"
+                    f"🎉 <b>Welcome to NewsBot, {message.from_user.first_name}!</b>\n\n"
+                    "🤖 I will help you automatically post news to your Telegram channel.\n\n"
+                    "🔥 <b>Features:</b>\n"
+                    "• 📰 Autopost news by category\n"
+                    "• 🎨 Various post styles\n"
+                    "• ⏰ Customizable posting schedule\n"
+                    "• 🧪 Free trial\n\n"
+                    "Choose an action:"
                 )
                 is_new_user = True
             else:
                 welcome_text = (
-                    f"👋 <b>С возвращением, {message.from_user.first_name}!</b>\n\n"
-                    "🚀 Готовы к работе с новостями?\n\n"
-                    "Выберите действие:"
+                    f"👋 <b>Welcome back, {message.from_user.first_name}!</b>\n\n"
+                    "🚀 Ready to work with news?\n\n"
+                    "Choose an action:"
                 )
                 is_new_user = False
 
@@ -122,7 +120,7 @@ async def start_command(message: Message, state: FSMContext):
                         parse_mode='HTML'
                     )
             except Exception as photo_error:
-                logging.warning(f"Не удалось загрузить приветственное изображение: {photo_error}")
+                logging.warning(f"Failed to load welcome image: {photo_error}")
                 await message.answer(
                     welcome_text,
                     reply_markup=get_main_menu_keyboard(),
@@ -132,9 +130,9 @@ async def start_command(message: Message, state: FSMContext):
             break
 
     except Exception as e:
-        logging.error(f"Ошибка в start_command: {e}")
+        logging.error(f"Error in start_command: {e}")
         await message.answer(
-            "❌ Произошла ошибка. Попробуйте позже.",
+            "❌ An error occurred. Please try again later.",
             reply_markup=get_main_menu_keyboard()
         )
 
@@ -143,7 +141,7 @@ async def start_command(message: Message, state: FSMContext):
 async def back_to_main_menu(callback: CallbackQuery, state: FSMContext):
     await state.set_state(UserStates.main_menu)
 
-    text = "🏠 <b>Главное меню</b>\n\nВыберите действие:"
+    text = "🏠 <b>Main menu</b>\n\nChoose an action:"
 
     await send_text_only(callback, text, get_main_menu_keyboard())
     await callback.answer()

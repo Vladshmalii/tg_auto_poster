@@ -15,7 +15,6 @@ router = Router()
 
 
 async def send_text_only(callback: CallbackQuery, text: str, reply_markup=None):
-    """Отправляет текстовое сообщение, удаляя предыдущее (даже если оно с фото)"""
     try:
         await callback.message.delete()
         await callback.message.answer(
@@ -24,8 +23,8 @@ async def send_text_only(callback: CallbackQuery, text: str, reply_markup=None):
             parse_mode='HTML'
         )
     except Exception as e:
-        logging.warning(f"Не удалось удалить сообщение: {e}")
-        # Если не удалось удалить, просто отправляем новое
+        logging.warning(f"Failed to delete message: {e}")
+        
         await callback.bot.send_message(
             chat_id=callback.message.chat.id,
             text=text,
@@ -39,14 +38,14 @@ async def show_subscription_plans(callback: CallbackQuery, state: FSMContext):
     await state.set_state(UserStates.selecting_subscription)
 
     text = (
-        "💎 <b>Тарифные планы NewsBot</b>\n\n"
-        "🔥 <b>Что вы получите:</b>\n"
-        "• Автоматический постинг новостей\n"
-        "• Выбор категорий и стилей\n"
-        "• Настройка расписания\n"
-        "• До 3 постов в день\n"
-        "• Поддержка 24/7\n\n"
-        "Выберите подходящий тариф:"
+        "💎 <b>NewsBot Subscription Plans</b>\n\n"
+        "🔥 <b>What you get:</b>\n"
+        "• Automatic news posting\n"
+        "• Category and style selection\n"
+        "• Schedule customization\n"
+        "• Up to 3 posts per day\n"
+        "• 24/7 support\n\n"
+        "Choose a plan:"
     )
 
     await send_text_only(callback, text, get_subscription_keyboard())
@@ -62,18 +61,18 @@ async def process_subscription_purchase(callback: CallbackQuery, state: FSMConte
     await state.set_state(UserStates.waiting_payment)
 
     descriptions = {
-        7: "🚀 Стартовый план\n📰 Автопостинг новостей\n⏰ 7 дней доступа",
-        14: "🔥 Популярный план\n📰 Автопостинг новостей\n⏰ 14 дней доступа\n💡 Экономия 8%",
-        30: "💎 Максимальный план\n📰 Автопостинг новостей\n⏰ 30 дней доступа\n💡 Экономия 17%"
+        7: "🚀 Starter plan\n📰 News autoposting\n⏰ 7 days access",
+        14: "🔥 Popular plan\n📰 News autoposting\n⏰ 14 days access\n💡 Save 8%",
+        30: "💎 Maximum plan\n📰 News autoposting\n⏰ 30 days access\n💡 Save 17%"
     }
 
-    prices = [LabeledPrice(label=f"NewsBot Premium {days}д", amount=price)]
+    prices = [LabeledPrice(label=f"NewsBot Premium {days}d", amount=price)]
 
     try:
         await callback.bot.send_invoice(
             chat_id=callback.from_user.id,
-            title=f"NewsBot Premium - {days} дней",
-            description=descriptions.get(days, f"Автопостинг новостей на {days} дней"),
+            title=f"NewsBot Premium - {days} days",
+            description=descriptions.get(days, f"News autoposting for {days} days"),
             payload=f"subscription_{days}_{callback.from_user.id}_{int(datetime.now().timestamp())}",
             provider_token="",
             currency="XTR",
@@ -85,28 +84,27 @@ async def process_subscription_purchase(callback: CallbackQuery, state: FSMConte
             is_flexible=False
         )
 
-        # Создаем клавиатуру с кнопкой "Назад"
         from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
         back_keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="⬅️ Назад к тарифам", callback_data="buy_subscription")],
-            [InlineKeyboardButton(text="🏠 Главное меню", callback_data="back_to_main")]
+            [InlineKeyboardButton(text="⬅️ Back to plans", callback_data="buy_subscription")],
+            [InlineKeyboardButton(text="🏠 Main menu", callback_data="back_to_main")]
         ])
 
         await send_text_only(
             callback,
-            f"💳 <b>Счет создан!</b>\n\n"
-            f"📦 Тариф: <b>NewsBot Premium {days} дней</b>\n"
-            f"💰 Стоимость: <b>{price} ⭐</b>\n\n"
-            "📱 Счет отправлен вам в личные сообщения.\n"
-            "Нажмите кнопку <b>\"Заплатить ⭐\"</b> для завершения покупки.",
+            f"💳 <b>Invoice created!</b>\n\n"
+            f"📦 Plan: <b>NewsBot Premium {days} days</b>\n"
+            f"💰 Price: <b>{price} ⭐</b>\n\n"
+            "📱 The invoice has been sent to your private messages.\n"
+            "Click the <b>\"Pay ⭐\"</b> button to complete the purchase.",
             back_keyboard
         )
 
     except Exception as e:
-        logging.error(f"Ошибка создания счета: {e}")
+        logging.error(f"Error creating invoice: {e}")
         await send_text_only(
             callback,
-            "❌ Ошибка создания счета. Попробуйте позже.",
+            "❌ Error creating invoice. Please try again later.",
             get_subscription_keyboard()
         )
 
@@ -128,20 +126,20 @@ async def process_pre_checkout_query(pre_checkout_query: PreCheckoutQuery):
             else:
                 await pre_checkout_query.answer(
                     ok=False,
-                    error_message="Неверные параметры подписки"
+                    error_message="Invalid subscription parameters"
                 )
                 logging.warning(f"Pre-checkout declined: invalid params {payload_parts}")
         else:
             await pre_checkout_query.answer(
                 ok=False,
-                error_message="Ошибка обработки платежа"
+                error_message="Payment processing error"
             )
 
     except Exception as e:
-        logging.error(f"Ошибка pre-checkout: {e}")
+        logging.error(f"Pre-checkout error: {e}")
         await pre_checkout_query.answer(
             ok=False,
-            error_message="Техническая ошибка"
+            error_message="Technical error"
         )
 
 
@@ -189,11 +187,11 @@ async def process_successful_payment(message: Message):
                 await db.commit()
 
                 success_text = (
-                    "🎉 <b>Платеж успешно обработан!</b>\n\n"
-                    f"✅ Подписка активирована на <b>{days} дней</b>\n"
-                    f"📅 Действует до: <b>{expires_at.strftime('%d.%m.%Y %H:%M')}</b>\n\n"
-                    "🚀 Теперь вы можете настроить автоматический постинг!\n"
-                    "Используйте команду /start для доступа к функциям."
+                    "🎉 <b>Payment processed successfully!</b>\n\n"
+                    f"✅ Subscription activated for <b>{days} days</b>\n"
+                    f"📅 Valid until: <b>{expires_at.strftime('%d.%m.%Y %H:%M')}</b>\n\n"
+                    "🚀 Now you can set up automatic posting!\n"
+                    "Use the /start command to access all features."
                 )
 
                 await message.answer(success_text, parse_mode='HTML')
@@ -205,8 +203,8 @@ async def process_successful_payment(message: Message):
     except Exception as e:
         logging.error(f"Ошибка обработки платежа: {e}")
         await message.answer(
-            "❌ Произошла ошибка при активации подписки. "
-            "Обратитесь в поддержку с ID платежа: "
+            "❌ An error occurred while activating your subscription. "
+            "Please contact support with your payment ID: "
             f"<code>{payment.telegram_payment_charge_id}</code>",
             parse_mode='HTML'
         )
@@ -216,12 +214,12 @@ async def notify_admin_about_payment(bot, payment, user, days):
     try:
         if settings.ADMIN_IDS:
             admin_text = (
-                "💰 <b>НОВЫЙ ПЛАТЕЖ!</b>\n\n"
-                f"👤 Пользователь: @{user.username or 'Unknown'} (ID: {user.telegram_id})\n"
-                f"📦 Тариф: {days} дней\n"
-                f"💳 Сумма: {payment.total_amount} {payment.currency}\n"
-                f"🆔 ID платежа: <code>{payment.telegram_payment_charge_id}</code>\n"
-                f"📅 Время: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
+                "💰 <b>NEW PAYMENT!</b>\n\n"
+                f"👤 User: @{user.username or 'Unknown'} (ID: {user.telegram_id})\n"
+                f"📦 Plan: {days} days\n"
+                f"💳 Amount: {payment.total_amount} {payment.currency}\n"
+                f"🆔 Payment ID: <code>{payment.telegram_payment_charge_id}</code>\n"
+                f"📅 Time: {datetime.now().strftime('%d.%m.%Y %H:%M')}"
             )
 
             for admin_id in settings.ADMIN_IDS:
@@ -232,10 +230,10 @@ async def notify_admin_about_payment(bot, payment, user, days):
                         parse_mode='HTML'
                     )
                 except Exception as e:
-                    logging.error(f"Не удалось отправить уведомление админу {admin_id}: {e}")
+                    logging.error(f"Failed to send notification to admin {admin_id}: {e}")
 
     except Exception as e:
-        logging.error(f"Ошибка уведомления администратора: {e}")
+        logging.error(f"Error notifying administrator: {e}")
 
 
 async def get_payment_statistics(db: AsyncSession, period_days: int = 30):
@@ -273,7 +271,7 @@ async def get_payment_statistics(db: AsyncSession, period_days: int = 30):
         }
 
     except Exception as e:
-        logging.error(f"Ошибка получения статистики: {e}")
+        logging.error(f"Error retrieving statistics: {e}")
         return None
 
 
@@ -288,22 +286,22 @@ async def show_payment_stats(message: Message):
 
             if stats:
                 stats_text = (
-                    f"📊 <b>Статистика платежей за 30 дней</b>\n\n"
-                    f"💰 Общая сумма: <b>{stats['total_amount']} Stars</b>\n"
-                    f"📦 Количество платежей: <b>{stats['total_count']}</b>\n"
-                    f"📈 Средний чек: <b>{stats['average_amount']:.1f} Stars</b>\n\n"
-                    f"<b>По тарифам:</b>\n"
-                    f"• 7 дней: {stats['subscription_stats'].get('7_days', 0)} шт\n"
-                    f"• 14 дней: {stats['subscription_stats'].get('14_days', 0)} шт\n"
-                    f"• 30 дней: {stats['subscription_stats'].get('30_days', 0)} шт"
+                    f"📊 <b>Payment statistics for 30 days</b>\n\n"
+                    f"💰 Total amount: <b>{stats['total_amount']} Stars</b>\n"
+                    f"📦 Number of payments: <b>{stats['total_count']}</b>\n"
+                    f"📈 Average payment: <b>{stats['average_amount']:.1f} Stars</b>\n\n"
+                    f"<b>By plan:</b>\n"
+                    f"• 7 days: {stats['subscription_stats'].get('7_days', 0)} pcs\n"
+                    f"• 14 days: {stats['subscription_stats'].get('14_days', 0)} pcs\n"
+                    f"• 30 days: {stats['subscription_stats'].get('30_days', 0)} pcs"
                 )
 
                 await message.answer(stats_text, parse_mode='HTML')
             else:
-                await message.answer("❌ Ошибка получения статистики")
+                await message.answer("❌ Error retrieving statistics")
 
             break
 
     except Exception as e:
-        logging.error(f"Ошибка показа статистики: {e}")
-        await message.answer("❌ Ошибка получения статистики")
+        logging.error(f"Error displaying statistics: {e}")
+        await message.answer("❌ Error retrieving statistics")

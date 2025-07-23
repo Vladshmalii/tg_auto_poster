@@ -16,7 +16,6 @@ class NewsItem:
 
 
 class NewsService:
-    """Сервис для получения новостей из различных источников"""
 
     def __init__(self):
         self.sources = {
@@ -108,7 +107,6 @@ class NewsService:
         }
 
     async def get_news_by_category(self, category: str, limit: int = 1) -> List[NewsItem]:
-        """Получает новости по категории (для совместимости с AutopostService)"""
         try:
             news_items = []
 
@@ -119,21 +117,19 @@ class NewsService:
 
             return news_items
         except Exception as e:
-            logging.error(f"Ошибка получения новостей для категории {category}: {e}")
+            logging.error(f"Error getting news for category {category}: {e}")
             return []
 
     async def get_random_news(self, category: str) -> Optional[NewsItem]:
-        """Получает случайную новость по категории"""
         try:
             sources = self.sources.get(category, [])
             if not sources:
-                logging.warning(f"Нет источников для категории: {category}")
+                logging.warning(f"No sources for category: {category}")
                 return None
 
-            # Пробуем несколько источников
             for source_url in sources:
                 try:
-                    logging.info(f"Пытаемся получить новости из: {source_url}")
+                    logging.info(f"Trying to get news from: {source_url}")
 
                     timeout = aiohttp.ClientTimeout(total=10)
                     async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -143,10 +139,8 @@ class NewsService:
                                 feed = feedparser.parse(rss_content)
 
                                 if feed.entries:
-                                    # Выбираем случайную новость из первых 10
                                     entry = random.choice(feed.entries[:10])
 
-                                    # Очищаем описание от HTML
                                     description = self._clean_html(entry.get('summary', ''))
 
                                     news_item = NewsItem(
@@ -156,26 +150,25 @@ class NewsService:
                                         published_at=entry.get('published', '')
                                     )
 
-                                    logging.info(f"Получена новость: {news_item.title[:50]}...")
+                                    logging.info(f"Got news: {news_item.title[:50]}...")
                                     return news_item
                                 else:
-                                    logging.warning(f"Нет записей в RSS: {source_url}")
+                                    logging.warning(f"No entries in RSS: {source_url}")
                             else:
-                                logging.warning(f"Ошибка HTTP {response.status}: {source_url}")
+                                logging.warning(f"HTTP error {response.status}: {source_url}")
 
                 except Exception as e:
-                    logging.error(f"Ошибка получения новостей из {source_url}: {e}")
+                    logging.error(f"Error getting news from {source_url}: {e}")
                     continue
 
-            logging.error(f"Не удалось получить новости ни из одного источника для категории: {category}")
+            logging.error(f"Failed to get news from any source for category: {category}")
             return None
 
         except Exception as e:
-            logging.error(f"Общая ошибка получения новостей: {e}")
+            logging.error(f"General error getting news: {e}")
             return None
 
     async def get_multiple_news(self, category: str, limit: int = 5) -> List[NewsItem]:
-        """Получает несколько новостей из разных источников"""
         try:
             sources = self.sources.get(category, [])
             if not sources:
@@ -183,7 +176,6 @@ class NewsService:
 
             news_items = []
 
-            # Пробуем получить новости из разных источников
             for source_url in sources[:limit]:
                 try:
                     timeout = aiohttp.ClientTimeout(total=10)
@@ -194,7 +186,6 @@ class NewsService:
                                 feed = feedparser.parse(rss_content)
 
                                 if feed.entries:
-                                    # Берем первую новость из каждого источника
                                     entry = feed.entries[0]
                                     description = self._clean_html(entry.get('summary', ''))
 
@@ -211,27 +202,23 @@ class NewsService:
                                         break
 
                 except Exception as e:
-                    logging.error(f"Ошибка получения новостей из {source_url}: {e}")
+                    logging.error(f"Error getting news from {source_url}: {e}")
                     continue
 
             return news_items
 
         except Exception as e:
-            logging.error(f"Ошибка получения множественных новостей: {e}")
+            logging.error(f"Error getting multiple news: {e}")
             return []
 
     def get_available_categories(self) -> List[str]:
-        """Возвращает список доступных категорий"""
         return list(self.sources.keys())
 
     def _clean_html(self, text: str) -> str:
-        """Очищает текст от HTML тегов"""
         if not text:
             return ""
 
         import re
-        # Удаляем HTML теги
         clean_text = re.sub(r'<[^>]+>', '', text)
-        # Убираем лишние пробелы и переносы
         clean_text = re.sub(r'\s+', ' ', clean_text).strip()
         return clean_text

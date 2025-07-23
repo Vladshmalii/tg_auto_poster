@@ -32,12 +32,12 @@ class Settings:
     })
 
     SUBSCRIPTION_IMAGES: dict = field(default_factory=lambda: {
-        7: "https://imgpx.com/cg81JcyyUmN4.png",
-        14: "https://imgpx.com/OinSqPAjYwfH.png",
-        30: "https://imgpx.com/yEDBwNV81aL6.png"
+        7: "https://imgpx.com/HJU49bwTH2w3.png",
+        14: "https://imgpx.com/itjOBLpnhfMM.png",
+        30: "https://imgpx.com/wwZ1dE9vpG9s.png"
     })
 
-    WELCOME_IMAGE_URL: str = field(default='https://imgpx.com/JkQSWcWjA2IL.png')
+    WELCOME_IMAGE_URL: str = field(default='https://imgpx.com/9PONxooi3VDX.png')
 
 
 settings = Settings()

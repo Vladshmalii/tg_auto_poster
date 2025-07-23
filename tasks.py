@@ -1,3 +1,9 @@
+import asyncio
+import logging
+import os
+import json
+from datetime import datetime, timedelta, date, timezone
+
 from celery_app import celery_app
 from aiogram import Bot
 from database.database import async_session
@@ -5,9 +11,6 @@ from services.autopost_service import AutopostService
 from config.settings import settings
 from database.models import TestPostLimit
 from sqlalchemy import delete
-from datetime import datetime, timedelta, date, timezone
-import asyncio
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -17,55 +20,62 @@ MOSCOW_TZ = timezone(timedelta(hours=3))
 def get_category_emoji_name(category):
     category_map = {
         'it': '💻 IT & Tech',
-        'crypto': '₿ Криптовалюты',
-        'business': '💼 Бизнес',
-        'general': '🌍 Общие новости',
-        'esports': '🎮 Киберспорт',
-        'tech': '📱 Технологии',
-        'politics': '🏛️ Политика',
-        'science': '🔬 Наука',
-        'auto': '🚗 Авто',
-        'health': '💊 Здоровье',
-        'entertainment': '🎭 Развлечения',
-        'sport': '⚽ Спорт'
+        'crypto': '₿ Cryptocurrency',
+        'business': '💼 Business',
+        'general': '🌍 General News',
+        'esports': '🎮 Esports',
+        'tech': '📱 Technology',
+        'politics': '🏛️ Politics',
+        'science': '🔬 Science',
+        'auto': '🚗 Auto',
+        'health': '💊 Health',
+        'entertainment': '🎭 Entertainment',
+        'sport': '⚽ Sport'
     }
     return category_map.get(category, f"📄 {category}")
 
 
 def get_style_emoji_name(style):
     style_map = {
-        'formal': '🎩 Формальный',
-        'casual': '😎 Разговорный',
-        'meme': '🤪 Мемный'
+        'formal': '🎩 Formal',
+        'casual': '😎 Casual',
+        'meme': '🤪 Meme'
     }
     return style_map.get(style, f"✏️ {style}")
 
 
 @celery_app.task
 def process_autoposts():
-    """Задача обработки автопостов"""
-    asyncio.run(_process_autoposts_async())
+    try:
+        return asyncio.run(_process_autoposts_async())
+    except Exception as e:
+        logger.error(f"Error in process_autoposts: {e}", exc_info=True)
+        raise
 
 
 async def _process_autoposts_async():
-    """Асинхронная обработка автопостов"""
-    bot = Bot(token=settings.BOT_TOKEN)
-    autopost_service = AutopostService(bot)
+    bot = None
+    try:
+        bot = Bot(token=settings.BOT_TOKEN)
+        autopost_service = AutopostService(bot)
 
-    async with async_session() as db:
-        await autopost_service.process_autoposts(db)
-
-    await bot.session.close()
+        async with async_session() as db:
+            await autopost_service.process_autoposts(db)
+    finally:
+        if bot:
+            await bot.session.close()
 
 
 @celery_app.task
 def cleanup_old_test_post_limits():
-    """Очистка старых записей тестовых постов (старше 30 дней)"""
-    asyncio.run(_cleanup_old_test_post_limits_async())
+    try:
+        return asyncio.run(_cleanup_old_test_post_limits_async())
+    except Exception as e:
+        logger.error(f"Error in cleanup_old_test_post_limits: {e}", exc_info=True)
+        raise
 
 
 async def _cleanup_old_test_post_limits_async():
-    """Асинхронная очистка старых записей"""
     try:
         async with async_session() as db:
             cutoff_date = date.today() - timedelta(days=30)
@@ -75,49 +85,54 @@ async def _cleanup_old_test_post_limits_async():
             )
 
             await db.commit()
-
-            logging.info(f"Удалено {result.rowcount} старых записей тестовых постов")
+            logging.info(f"Deleted {result.rowcount} old test post records")
 
     except Exception as e:
-        logging.error(f"Ошибка очистки старых записей: {e}")
+        logging.error(f"Error cleaning old records: {e}")
+        raise
 
 
 @celery_app.task
 def send_manual_post(user_id: int, channel_id: str, category: str, style: str):
-    """Отправка поста вручную"""
-    asyncio.run(_send_manual_post_async(user_id, channel_id, category, style))
+    try:
+        return asyncio.run(_send_manual_post_async(user_id, channel_id, category, style))
+    except Exception as e:
+        logger.error(f"Error in send_manual_post: {e}", exc_info=True)
+        raise
 
 
 @celery_app.task
 def schedule_post_at_time(user_id: int, channel_id: str, category: str, style: str, target_time: str):
-    """Запланировать пост на конкретное время (например: 15:23)"""
-    asyncio.run(_schedule_post_async(user_id, channel_id, category, style, target_time))
+    try:
+        return asyncio.run(_schedule_post_async(user_id, channel_id, category, style, target_time))
+    except Exception as e:
+        logger.error(f"Error in schedule_post_at_time: {e}", exc_info=True)
+        raise
 
 
 async def _send_manual_post_async(user_id: int, channel_id: str, category: str, style: str):
-    logger.info(
-        f"Начинаем отправку поста: user_id={user_id}, channel_id={channel_id}, category={category}, style={style}")
-    bot = Bot(token=settings.BOT_TOKEN)
-    autopost_service = AutopostService(bot)
-
+    bot = None
     try:
+        logger.info(
+            f"Starting post send: user_id={user_id}, channel_id={channel_id}, category={category}, style={style}")
+
+        bot = Bot(token=settings.BOT_TOKEN)
+        autopost_service = AutopostService(bot)
+
         async with async_session() as db:
-            # Проверяем лимит постов пользователя перед отправкой
             from database.models import User, PostLog
             from sqlalchemy import select, func, and_
             from datetime import date
 
-            # Получаем пользователя
             user_result = await db.execute(
                 select(User).where(User.id == user_id)
             )
             user = user_result.scalar_one_or_none()
 
             if not user:
-                logger.error(f"Пользователь с ID {user_id} не найден")
+                logger.error(f"User with ID {user_id} not found")
                 return
 
-            # Проверяем количество постов за сегодня
             today = date.today()
             posts_today_result = await db.execute(
                 select(func.count(PostLog.id)).where(
@@ -130,19 +145,17 @@ async def _send_manual_post_async(user_id: int, channel_id: str, category: str, 
             )
             posts_today = posts_today_result.scalar() or 0
 
-            # Максимум 3 поста в день
             if posts_today >= 3:
-                logger.warning(f"Пользователь {user_id} достиг лимита постов на сегодня: {posts_today}/3")
+                logger.warning(f"User {user_id} reached daily post limit: {posts_today}/3")
 
-                # Уведомляем пользователя о превышении лимита
                 telegram_id = user.telegram_id
                 if telegram_id:
                     limit_message = (
-                        f"❌ <b>Лимит постов исчерпан</b>\n\n"
-                        f"📊 Сегодня отправлено: {posts_today}/3 постов\n"
-                        f"📢 Канал: {channel_id}\n"
-                        f"⏰ Попробуйте завтра или дождитесь автопостинга\n\n"
-                        f"💡 Лимит обновляется каждый день в 00:00"
+                        f"❌ <b>Post limit exceeded</b>\n\n"
+                        f"📊 Today sent: {posts_today}/3 posts\n"
+                        f"📢 Channel: {channel_id}\n"
+                        f"⏰ Try tomorrow or wait for autoposting\n\n"
+                        f"💡 Limit resets every day at 00:00"
                     )
 
                     try:
@@ -151,14 +164,12 @@ async def _send_manual_post_async(user_id: int, channel_id: str, category: str, 
                             text=limit_message,
                             parse_mode='HTML'
                         )
-                        logger.info(f"Уведомление о лимите отправлено пользователю {telegram_id}")
+                        logger.info(f"Limit notification sent to user {telegram_id}")
                     except Exception as notify_error:
-                        logger.warning(
-                            f"Не удалось отправить уведомление о лимите пользователю {telegram_id}: {notify_error}")
+                        logger.warning(f"Failed to send limit notification to user {telegram_id}: {notify_error}")
 
                 return
 
-            # Если лимит не превышен, отправляем пост
             await autopost_service.send_single_post(
                 db=db,
                 user_id=user_id,
@@ -166,9 +177,9 @@ async def _send_manual_post_async(user_id: int, channel_id: str, category: str, 
                 category=category,
                 style=style
             )
-        logger.info("Пост успешно отправлен")
 
-        # Получаем telegram_id пользователя из базы данных
+        logger.info("Post sent successfully")
+
         async with async_session() as db:
             from database.models import User
             from sqlalchemy import select
@@ -179,7 +190,6 @@ async def _send_manual_post_async(user_id: int, channel_id: str, category: str, 
             telegram_id = user_result.scalar()
 
             if telegram_id:
-                # Получаем обновленное количество постов
                 posts_today_result = await db.execute(
                     select(func.count(PostLog.id)).where(
                         and_(
@@ -191,15 +201,14 @@ async def _send_manual_post_async(user_id: int, channel_id: str, category: str, 
                 )
                 posts_after = posts_today_result.scalar() or 0
 
-                # Отправляем уведомление пользователю об успешной отправке
                 try:
                     success_message = (
-                        f"✅ <b>Пост успешно отправлен!</b>\n\n"
-                        f"📢 Канал: {channel_id}\n"
-                        f"📂 Категория: {get_category_emoji_name(category)}\n"
-                        f"🎨 Стиль: {get_style_emoji_name(style)}\n"
-                        f"⏰ Время: {datetime.now(MOSCOW_TZ).strftime('%H:%M:%S')}\n"
-                        f"📊 Постов сегодня: {posts_after}/3"
+                        f"✅ <b>Post sent successfully!</b>\n\n"
+                        f"📢 Channel: {channel_id}\n"
+                        f"📂 Category: {get_category_emoji_name(category)}\n"
+                        f"🎨 Style: {get_style_emoji_name(style)}\n"
+                        f"⏰ Time: {datetime.now(MOSCOW_TZ).strftime('%H:%M:%S')}\n"
+                        f"📊 Posts today: {posts_after}/3"
                     )
 
                     await bot.send_message(
@@ -207,81 +216,75 @@ async def _send_manual_post_async(user_id: int, channel_id: str, category: str, 
                         text=success_message,
                         parse_mode='HTML'
                     )
-                    logger.info(f"Уведомление об успешной отправке отправлено пользователю {telegram_id}")
+                    logger.info(f"Success notification sent to user {telegram_id}")
 
                 except Exception as notify_error:
-                    logger.warning(f"Не удалось отправить уведомление пользователю {telegram_id}: {notify_error}")
+                    logger.warning(f"Failed to send success notification to user {telegram_id}: {notify_error}")
             else:
-                logger.warning(f"Не найден telegram_id для пользователя с ID {user_id}")
+                logger.warning(f"Telegram ID not found for user with ID {user_id}")
 
     except Exception as e:
-        logger.error(f"Ошибка при отправке поста: {e}", exc_info=True)
+        logger.error(f"Error sending post: {e}", exc_info=True)
 
-        # Получаем telegram_id для отправки уведомления об ошибке
         try:
-            async with async_session() as db:
-                from database.models import User
-                from sqlalchemy import select
+            if bot:
+                async with async_session() as db:
+                    from database.models import User
+                    from sqlalchemy import select
 
-                user_result = await db.execute(
-                    select(User.telegram_id).where(User.id == user_id)
-                )
-                telegram_id = user_result.scalar()
-
-                if telegram_id:
-                    error_message = (
-                        f"❌ <b>Ошибка при отправке поста</b>\n\n"
-                        f"📢 Канал: {channel_id}\n"
-                        f"📂 Категория: {get_category_emoji_name(category)}\n"
-                        f"🎨 Стиль: {get_style_emoji_name(style)}\n"
-                        f"⚠️ Ошибка: {str(e)[:200]}..."
+                    user_result = await db.execute(
+                        select(User.telegram_id).where(User.id == user_id)
                     )
+                    telegram_id = user_result.scalar()
 
-                    await bot.send_message(
-                        chat_id=telegram_id,
-                        text=error_message,
-                        parse_mode='HTML'
-                    )
-                    logger.info(f"Уведомление об ошибке отправлено пользователю {telegram_id}")
+                    if telegram_id:
+                        error_message = (
+                            f"❌ <b>Error sending post</b>\n\n"
+                            f"📢 Channel: {channel_id}\n"
+                            f"📂 Category: {get_category_emoji_name(category)}\n"
+                            f"🎨 Style: {get_style_emoji_name(style)}\n"
+                            f"⚠️ Error: {str(e)[:200]}..."
+                        )
+
+                        await bot.send_message(
+                            chat_id=telegram_id,
+                            text=error_message,
+                            parse_mode='HTML'
+                        )
+                        logger.info(f"Error notification sent to user {telegram_id}")
 
         except Exception as notify_error:
-            logger.warning(f"Не удалось отправить уведомление об ошибке: {notify_error}")
+            logger.warning(f"Failed to send error notification: {notify_error}")
 
     finally:
-        await bot.session.close()
+        if bot:
+            await bot.session.close()
 
 
 async def _schedule_post_async(user_id: int, channel_id: str, category: str, style: str, target_time: str):
-    """Запланированная отправка поста"""
     try:
-        # Используем московское время
         now = datetime.now(MOSCOW_TZ)
         target_hour, target_minute = map(int, target_time.split(':'))
 
-        # Создаем время в московской зоне
         target_datetime = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
 
-        # Если время уже прошло сегодня, планируем на завтра
         if target_datetime <= now:
             target_datetime += timedelta(days=1)
 
-        # Вычисляем количество секунд до выполнения
         countdown_seconds = int((target_datetime - now).total_seconds())
 
-        logging.info(f"Планируем отправку на {target_datetime} (МСК), текущее время: {now} (МСК)")
-        logging.info(f"Задача будет выполнена через {countdown_seconds} секунд")
+        logging.info(f"Scheduling send at {target_datetime} (MSK), current time: {now} (MSK)")
+        logging.info(f"Task will execute in {countdown_seconds} seconds")
 
-        # Используем countdown вместо eta для надежности
         result = send_manual_post.apply_async(
             args=[user_id, channel_id, category, style],
             countdown=countdown_seconds
         )
 
-        logging.info(f"Задача запланирована с ID: {result.id}, countdown: {countdown_seconds} сек")
+        logging.info(f"Task scheduled with ID: {result.id}, countdown: {countdown_seconds} sec")
 
     except Exception as e:
-        logging.error(f"Ошибка планирования задачи: {e}")
-        # Fallback - отправить через 5 минут
+        logging.error(f"Error scheduling task: {e}")
         send_manual_post.apply_async(
             args=[user_id, channel_id, category, style],
             countdown=300
@@ -290,73 +293,84 @@ async def _schedule_post_async(user_id: int, channel_id: str, category: str, sty
 
 @celery_app.task
 def send_scheduled_posts():
-    """Отправка запланированных постов (проверка каждые 5 минут)"""
-    asyncio.run(_send_scheduled_posts_async())
+    try:
+        return asyncio.run(_send_scheduled_posts_async())
+    except Exception as e:
+        logger.error(f"Error in send_scheduled_posts: {e}", exc_info=True)
+        raise
 
 
 async def _send_scheduled_posts_async():
-    """Проверка и отправка постов по точному времени"""
+    bot = None
     try:
         bot = Bot(token=settings.BOT_TOKEN)
         autopost_service = AutopostService(bot)
 
-        # Используем московское время
         current_time = datetime.now(MOSCOW_TZ).strftime('%H:%M')
 
         async with async_session() as db:
             await autopost_service.process_custom_time_posts(db, current_time)
 
-        await bot.session.close()
-
     except Exception as e:
-        logging.error(f"Ошибка обработки запланированных постов: {e}")
+        logging.error(f"Error processing scheduled posts: {e}")
+        raise
+    finally:
+        if bot:
+            await bot.session.close()
 
 
 @celery_app.task
 def send_broadcast_message(user_ids: list, message_text: str):
-    """Массовая рассылка сообщений"""
-    asyncio.run(_send_broadcast_async(user_ids, message_text))
+    try:
+        return asyncio.run(_send_broadcast_async(user_ids, message_text))
+    except Exception as e:
+        logger.error(f"Error in send_broadcast_message: {e}", exc_info=True)
+        raise
 
 
 async def _send_broadcast_async(user_ids: list, message_text: str):
-    """Асинхронная массовая рассылка"""
-    bot = Bot(token=settings.BOT_TOKEN)
+    bot = None
+    try:
+        bot = Bot(token=settings.BOT_TOKEN)
 
-    successful = 0
-    failed = 0
+        successful = 0
+        failed = 0
 
-    for user_id in user_ids:
-        try:
-            await bot.send_message(
-                chat_id=user_id,
-                text=message_text,
-                parse_mode='HTML'
-            )
-            successful += 1
-            await asyncio.sleep(0.1)
-        except Exception as e:
-            failed += 1
-            logging.warning(f"Не удалось отправить сообщение пользователю {user_id}: {e}")
+        for user_id in user_ids:
+            try:
+                await bot.send_message(
+                    chat_id=user_id,
+                    text=message_text,
+                    parse_mode='HTML'
+                )
+                successful += 1
+                await asyncio.sleep(0.1)
+            except Exception as e:
+                failed += 1
+                logging.warning(f"Failed to send message to user {user_id}: {e}")
 
-    logging.info(f"Рассылка завершена: {successful} успешно, {failed} ошибок")
-    await bot.session.close()
+        logging.info(f"Broadcast completed: {successful} successful, {failed} errors")
+    finally:
+        if bot:
+            await bot.session.close()
 
 
 @celery_app.task
 def generate_analytics_report(period_days: int = 7):
-    """Генерация аналитического отчета"""
-    asyncio.run(_generate_analytics_async(period_days))
+    try:
+        return asyncio.run(_generate_analytics_async(period_days))
+    except Exception as e:
+        logger.error(f"Error in generate_analytics_report: {e}", exc_info=True)
+        raise
 
 
 async def _generate_analytics_async(period_days: int):
-    """Асинхронная генерация аналитики"""
     try:
         async with async_session() as db:
             from datetime import datetime, timedelta
             from sqlalchemy import select, func, and_
             from database.models import User, Subscription, Transaction, AutopostSettings
 
-            # Используем московское время
             start_date = datetime.now(MOSCOW_TZ) - timedelta(days=period_days)
 
             new_users_result = await db.execute(
@@ -392,25 +406,29 @@ async def _generate_analytics_async(period_days: int):
             active_autoposts = active_autoposts_result.scalar() or 0
 
             logging.info(
-                f"Аналитика за {period_days} дней: "
-                f"Новых пользователей: {new_users}, "
-                f"Активных подписок: {active_subs}, "
-                f"Доход: {total_revenue} звезд, "
-                f"Активных автопостов: {active_autoposts}"
+                f"Analytics for {period_days} days: "
+                f"New users: {new_users}, "
+                f"Active subscriptions: {active_subs}, "
+                f"Revenue: {total_revenue} stars, "
+                f"Active autoposts: {active_autoposts}"
             )
 
     except Exception as e:
-        logging.error(f"Ошибка генерации аналитики: {e}")
+        logging.error(f"Error generating analytics: {e}")
+        raise
 
 
 @celery_app.task
 def check_subscription_expiry():
-    """Проверка истекающих подписок и уведомления"""
-    asyncio.run(_check_subscription_expiry_async())
+    try:
+        return asyncio.run(_check_subscription_expiry_async())
+    except Exception as e:
+        logger.error(f"Error in check_subscription_expiry: {e}", exc_info=True)
+        raise
 
 
 async def _check_subscription_expiry_async():
-    """Проверка и уведомление об истекающих подписках"""
+    bot = None
     try:
         bot = Bot(token=settings.BOT_TOKEN)
 
@@ -418,7 +436,6 @@ async def _check_subscription_expiry_async():
             from database.models import User, Subscription
             from sqlalchemy import select, and_
 
-            # Используем московское время
             now = datetime.now(MOSCOW_TZ)
             tomorrow = now + timedelta(days=1)
 
@@ -439,10 +456,10 @@ async def _check_subscription_expiry_async():
 
                     if hours_left <= 24:
                         message = (
-                            f"⏰ <b>Подписка истекает!</b>\n\n"
-                            f"У вас осталось: {hours_left} часов\n"
-                            f"Продлите подписку, чтобы не потерять доступ к автопостингу\n\n"
-                            f"💎 /buy - продлить подписку"
+                            f"⏰ <b>Subscription expiring!</b>\n\n"
+                            f"Time left: {hours_left} hours\n"
+                            f"Renew your subscription to keep access to autoposting\n\n"
+                            f"💎 /buy - renew subscription"
                         )
 
                         await bot.send_message(
@@ -452,28 +469,31 @@ async def _check_subscription_expiry_async():
                         )
 
                 except Exception as e:
-                    logging.warning(f"Не удалось уведомить пользователя {user.telegram_id}: {e}")
-
-        await bot.session.close()
+                    logging.warning(f"Failed to notify user {user.telegram_id}: {e}")
 
     except Exception as e:
-        logging.error(f"Ошибка проверки истекающих подписок: {e}")
+        logging.error(f"Error checking subscription expiry: {e}")
+        raise
+    finally:
+        if bot:
+            await bot.session.close()
 
 
 @celery_app.task
 def cleanup_expired_subscriptions():
-    """Деактивация истекших подписок"""
-    asyncio.run(_cleanup_expired_subscriptions_async())
+    try:
+        return asyncio.run(_cleanup_expired_subscriptions_async())
+    except Exception as e:
+        logger.error(f"Error in cleanup_expired_subscriptions: {e}", exc_info=True)
+        raise
 
 
 async def _cleanup_expired_subscriptions_async():
-    """Деактивация истекших подписок"""
     try:
         async with async_session() as db:
             from database.models import Subscription, AutopostSettings
             from sqlalchemy import select, and_, update
 
-            # Используем московское время
             now = datetime.now(MOSCOW_TZ)
 
             expired_subs_result = await db.execute(
@@ -502,28 +522,28 @@ async def _cleanup_expired_subscriptions_async():
             await db.commit()
 
             if deactivated_count > 0:
-                logging.info(f"Деактивировано {deactivated_count} истекших подписок")
+                logging.info(f"Deactivated {deactivated_count} expired subscriptions")
 
     except Exception as e:
-        logging.error(f"Ошибка деактивации подписок: {e}")
+        logging.error(f"Error deactivating subscriptions: {e}")
+        raise
 
 
 @celery_app.task
 def backup_database():
-    """Создание резервной копии важных данных"""
-    asyncio.run(_backup_database_async())
+    try:
+        return asyncio.run(_backup_database_async())
+    except Exception as e:
+        logger.error(f"Error in backup_database: {e}", exc_info=True)
+        raise
 
 
 async def _backup_database_async():
-    """Создание бэкапа базы данных"""
     try:
         async with async_session() as db:
             from database.models import User, Subscription, Transaction
             from sqlalchemy import select
-            import json
-            import os
 
-            # Используем московское время
             now = datetime.now(MOSCOW_TZ)
 
             backup_data = {
@@ -577,7 +597,6 @@ async def _backup_database_async():
             with open(backup_path, 'w', encoding='utf-8') as f:
                 json.dump(backup_data, f, ensure_ascii=False, indent=2)
 
-            # Удаляем старые бэкапы (старше 30 дней)
             cutoff_time = now - timedelta(days=30)
             for filename in os.listdir(backup_dir):
                 if filename.startswith('backup_') and filename.endswith('.json'):
@@ -587,37 +606,37 @@ async def _backup_database_async():
                     if file_time < cutoff_time:
                         os.remove(file_path)
 
-            logging.info(f"Бэкап создан: {backup_path}")
+            logging.info(f"Backup created: {backup_path}")
 
     except Exception as e:
-        logging.error(f"Ошибка создания бэкапа: {e}")
+        logging.error(f"Error creating backup: {e}")
+        raise
 
 
 @celery_app.task
 def health_check():
-    """Проверка работоспособности системы"""
-    asyncio.run(_health_check_async())
+    try:
+        return asyncio.run(_health_check_async())
+    except Exception as e:
+        logger.error(f"Error in health_check: {e}", exc_info=True)
+        raise
 
 
 async def _health_check_async():
-    """Проверка состояния системы"""
+    bot = None
     try:
         bot = Bot(token=settings.BOT_TOKEN)
 
-        # Проверка подключения к базе данных
         async with async_session() as db:
             from sqlalchemy import text
             result = await db.execute(text("SELECT 1"))
             db_status = "OK" if result.scalar() == 1 else "ERROR"
 
-        # Проверка Telegram API
         try:
             me = await bot.get_me()
             bot_status = "OK" if me else "ERROR"
         except Exception:
             bot_status = "ERROR"
-
-        await bot.session.close()
 
         logging.info(f"Health check: DB={db_status}, Bot={bot_status}")
 
@@ -628,9 +647,12 @@ async def _health_check_async():
         }
 
     except Exception as e:
-        logging.error(f"Ошибка health check: {e}")
+        logging.error(f"Health check error: {e}")
         return {
             'status': 'ERROR',
             'error': str(e),
             'timestamp': datetime.now(MOSCOW_TZ).isoformat()
         }
+    finally:
+        if bot:
+            await bot.session.close()

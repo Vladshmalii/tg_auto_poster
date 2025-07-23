@@ -25,7 +25,6 @@ def escape_html(text: str) -> str:
 
 
 async def send_text_only(callback: CallbackQuery, text: str, reply_markup=None):
-    """Отправляет текстовое сообщение, удаляя предыдущее (даже если оно с фото)"""
     try:
         await callback.message.delete()
         await callback.message.answer(
@@ -34,8 +33,7 @@ async def send_text_only(callback: CallbackQuery, text: str, reply_markup=None):
             parse_mode='HTML'
         )
     except Exception as e:
-        logging.warning(f"Не удалось удалить сообщение: {e}")
-        # Если не удалось удалить, просто отправляем новое
+        logging.warning(f"Failed to delete message: {e}")
         await callback.bot.send_message(
             chat_id=callback.message.chat.id,
             text=text,
@@ -52,7 +50,7 @@ async def start_test_posting(callback: CallbackQuery, state: FSMContext):
         )
 
         if not can_create:
-            error_text = f"🚫 <b>Лимит тестовых постов исчерпан</b>\n\n{error_message}"
+            error_text = f"🚫 <b>Test post limit exceeded</b>\n\n{error_message}"
             await send_text_only(callback, error_text, get_subscription_keyboard())
             await callback.answer()
             return
@@ -62,10 +60,10 @@ async def start_test_posting(callback: CallbackQuery, state: FSMContext):
     await state.set_state(UserStates.selecting_category)
 
     text = (
-        "🧪 <b>Тестовый постинг</b>\n\n"
-        "Давайте протестируем, как бот будет оформлять посты в вашем канале!\n\n"
-        "⚠️ <b>Внимание:</b> Тестовый пост доступен 1 раз в 24 часа.\n\n"
-        "Сначала выберите категорию новостей:"
+        "🧪 <b>Test Posting</b>\n\n"
+        "Let's test how the bot will format posts for your channel!\n\n"
+        "⚠️ <b>Attention:</b> Test post is available once every 24 hours.\n\n"
+        "First, select a news category:"
     )
 
     await send_text_only(callback, text, get_category_keyboard())
@@ -81,24 +79,24 @@ async def select_category(callback: CallbackQuery, state: FSMContext):
 
     category_names = {
         'it': '💻 IT & Tech',
-        'crypto': '₿ Криптовалюты',
-        'business': '💼 Бизнес',
-        'general': '🌍 Общие новости',
-        'esports': '🎮 Киберспорт',
-        'tech': '📱 Технологии',
-        'politics': '🏛️ Политика',
-        'science': '🔬 Наука',
-        'auto': '🚗 Авто',
-        'health': '💊 Здоровье',
-        'entertainment': '🎭 Развлечения',
-        'sport': '⚽ Спорт'
+        'crypto': '₿ Cryptocurrency',
+        'business': '💼 Business',
+        'general': '🌍 General News',
+        'esports': '🎮 Esports',
+        'tech': '📱 Technology',
+        'politics': '🏛️ Politics',
+        'science': '🔬 Science',
+        'auto': '🚗 Automotive',
+        'health': '💊 Health',
+        'entertainment': '🎭 Entertainment',
+        'sport': '⚽ Sports'
     }
 
-    category_name = category_names.get(category, 'Неизвестно')
+    category_name = category_names.get(category, 'Unknown')
 
     text = (
-        f"✅ Выбрана категория: <b>{category_name}</b>\n\n"
-        "Теперь выберите стиль оформления постов:"
+        f"✅ Selected category: <b>{category_name}</b>\n\n"
+        "Now select the post formatting style:"
     )
 
     await send_text_only(callback, text, get_style_keyboard())
@@ -113,30 +111,30 @@ async def select_style(callback: CallbackQuery, state: FSMContext):
     await state.set_state(UserStates.waiting_channel_setup)
 
     style_names = {
-        'formal': '🎩 Формальный',
-        'casual': '😎 Разговорный',
-        'meme': '🤪 Мемный'
+        'formal': '🎩 Formal',
+        'casual': '😎 Casual',
+        'meme': '🤪 Meme'
     }
 
-    style_name = style_names.get(style, 'Неизвестно')
+    style_name = style_names.get(style, 'Unknown')
 
     try:
         bot_info = await callback.bot.get_me()
-        bot_username = bot_info.username if bot_info.username else "вашего_бота"
+        bot_username = bot_info.username if bot_info.username else "your_bot"
     except Exception:
-        bot_username = "вашего_бота"
+        bot_username = "your_bot"
 
     text = (
-        f"✅ Выбран стиль: <b>{style_name}</b>\n\n"
-        "📋 <b>Инструкция по добавлению бота:</b>\n\n"
-        "1️⃣ Перейдите в настройки вашего канала\n"
-        "2️⃣ Выберите «Администраторы»\n"
-        "3️⃣ Нажмите «Добавить администратора»\n"
-        f"4️⃣ Найдите и добавьте: @{bot_username}\n"
-        "5️⃣ Обязательно дайте права на <b>«Публикация сообщений»</b>\n\n"
-        "6️⃣ Затем отправьте мне <b>username канала</b> (например: @my_channel)\n\n"
-        "❓ <b>Как узнать username канала?</b>\n"
-        "Зайдите в канал → Настройки → Тип канала → Публичная ссылка"
+        f"✅ Selected style: <b>{style_name}</b>\n\n"
+        "📋 <b>Bot Setup Instructions:</b>\n\n"
+        "1️⃣ Go to your channel settings\n"
+        "2️⃣ Select \"Administrators\"\n"
+        "3️⃣ Click \"Add Administrator\"\n"
+        f"4️⃣ Find and add: @{bot_username}\n"
+        "5️⃣ Make sure to grant <b>\"Post Messages\"</b> permission\n\n"
+        "6️⃣ Then send me your <b>channel username</b> (e.g.: @my_channel)\n\n"
+        "❓ <b>How to find channel username?</b>\n"
+        "Go to channel → Settings → Channel Type → Public Link"
     )
 
     await send_text_only(callback, text)
@@ -149,8 +147,8 @@ async def receive_channel_info(message: Message, state: FSMContext):
 
     if not (channel_input.startswith('@') or 'telegram.me/' in channel_input or 't.me/' in channel_input):
         await message.answer(
-            "❌ <b>Неверный формат!</b>\n\n"
-            "Отправьте username канала (например: @my_channel) или ссылку на канал.",
+            "❌ <b>Invalid format!</b>\n\n"
+            "Send channel username (e.g.: @my_channel) or channel link.",
             parse_mode='HTML'
         )
         return
@@ -177,7 +175,7 @@ async def check_bot_permissions_real(message: Message, state: FSMContext, channe
         safe_channel_name = escape_html(channel_username)
 
         checking_msg = await message.answer(
-            f"🔍 <b>Проверяю права бота в канале {safe_channel_name}...</b>",
+            f"🔍 <b>Checking bot permissions in channel {safe_channel_name}...</b>",
             parse_mode='HTML'
         )
 
@@ -187,23 +185,23 @@ async def check_bot_permissions_real(message: Message, state: FSMContext, channe
 
             if chat_member.status not in ['administrator']:
                 await checking_msg.edit_text(
-                    f"❌ <b>Бот не является администратором в канале {safe_channel_name}</b>\n\n"
-                    "Пожалуйста, добавьте бота как администратора с правами на публикацию сообщений.",
+                    f"❌ <b>Bot is not an administrator in channel {safe_channel_name}</b>\n\n"
+                    "Please add the bot as an administrator with message posting permissions.",
                     parse_mode='HTML'
                 )
                 return
 
             if not chat_member.can_post_messages:
                 await checking_msg.edit_text(
-                    f"❌ <b>У бота нет прав на публикацию в канале {safe_channel_name}</b>\n\n"
-                    "Пожалуйста, дайте боту права на публикацию сообщений.",
+                    f"❌ <b>Bot doesn't have posting permissions in channel {safe_channel_name}</b>\n\n"
+                    "Please grant the bot message posting permissions.",
                     parse_mode='HTML'
                 )
                 return
 
             await checking_msg.edit_text(
-                "✅ <b>Права проверены успешно!</b>\n\n"
-                "⏳ Генерирую тестовый пост...",
+                "✅ <b>Permissions verified successfully!</b>\n\n"
+                "⏳ Generating test post...",
                 parse_mode='HTML'
             )
 
@@ -215,29 +213,29 @@ async def check_bot_permissions_real(message: Message, state: FSMContext, channe
 
             if "chat not found" in error_msg.lower():
                 await checking_msg.edit_text(
-                    f"❌ <b>Канал {safe_channel_name} не найден</b>\n\n"
-                    "Проверьте правильность username канала. "
-                    "Убедитесь, что канал публичный или бот добавлен в него.",
+                    f"❌ <b>Channel {safe_channel_name} not found</b>\n\n"
+                    "Check that the channel username is correct. "
+                    "Make sure the channel is public or the bot is added to it.",
                     parse_mode='HTML'
                 )
             elif "not enough rights" in error_msg.lower() or "forbidden" in error_msg.lower():
                 await checking_msg.edit_text(
-                    f"❌ <b>Недостаточно прав для доступа к каналу {safe_channel_name}</b>\n\n"
-                    "Добавьте бота в канал как администратора.",
+                    f"❌ <b>Insufficient permissions to access channel {safe_channel_name}</b>\n\n"
+                    "Add the bot to the channel as an administrator.",
                     parse_mode='HTML'
                 )
             else:
                 await checking_msg.edit_text(
-                    f"❌ <b>Ошибка при проверке канала:</b>\n\n"
+                    f"❌ <b>Error checking channel:</b>\n\n"
                     f"{safe_error}\n\n"
-                    "Убедитесь, что бот добавлен в канал как администратор.",
+                    "Make sure the bot is added to the channel as an administrator.",
                     parse_mode='HTML'
                 )
 
     except Exception as e:
-        logging.error(f"Ошибка при проверке прав: {e}")
+        logging.error(f"Error checking permissions: {e}")
         await message.answer(
-            "❌ Произошла ошибка при проверке. Попробуйте еще раз.",
+            "❌ An error occurred during verification. Please try again.",
             reply_markup=get_main_menu_keyboard()
         )
 
@@ -256,9 +254,9 @@ async def generate_and_send_test_post(message: Message, state: FSMContext, chann
         if not news_item:
             from services.news_service import NewsItem
             news_item = NewsItem(
-                title="Тестовая новость для демонстрации",
-                description="Это пример того, как будут выглядеть ваши посты. "
-                            "Бот автоматически находит актуальные новости и оформляет их в выбранном стиле.",
+                title="Test news for demonstration",
+                description="This is an example of how your posts will look. "
+                            "The bot automatically finds current news and formats it in your selected style.",
                 url="https://example.com",
                 published_at="2024-01-01T12:00:00Z"
             )
@@ -288,15 +286,15 @@ async def generate_and_send_test_post(message: Message, state: FSMContext, chann
             safe_style = escape_html(style)
 
             success_text = (
-                "🎉 <b>Тестовый пост успешно опубликован!</b>\n\n"
-                "📊 <b>Параметры поста:</b>\n"
-                f"• Канал: {safe_channel}\n"
-                f"• Категория: {safe_category}\n"
-                f"• Стиль: {safe_style}\n\n"
-                "✨ <b>Проверьте ваш канал!</b>\n\n"
-                "⚠️ <b>Помните:</b> Следующий тестовый пост будет доступен через 24 часа.\n\n"
-                "💎 <b>Хотите больше постов?</b> Приобретите подписку "
-                "для автоматического постинга 3 раза в день!"
+                "🎉 <b>Test post published successfully!</b>\n\n"
+                "📊 <b>Post parameters:</b>\n"
+                f"• Channel: {safe_channel}\n"
+                f"• Category: {safe_category}\n"
+                f"• Style: {safe_style}\n\n"
+                "✨ <b>Check your channel!</b>\n\n"
+                "⚠️ <b>Remember:</b> Next test post will be available in 24 hours.\n\n"
+                "💎 <b>Want more posts?</b> Purchase a subscription "
+                "for automatic posting 3 times per day!"
             )
 
             await message.answer(
@@ -314,32 +312,32 @@ async def generate_and_send_test_post(message: Message, state: FSMContext, chann
 
             if "chat not found" in error_msg.lower():
                 await message.answer(
-                    f"❌ <b>Не удалось отправить пост в {safe_channel}</b>\n\n"
-                    "Возможные причины:\n"
-                    "• Неверный username канала\n"
-                    "• Бот не добавлен в канал\n"
-                    "• Недостаточно прав у бота",
+                    f"❌ <b>Failed to send post to {safe_channel}</b>\n\n"
+                    "Possible reasons:\n"
+                    "• Incorrect channel username\n"
+                    "• Bot not added to channel\n"
+                    "• Insufficient bot permissions",
                     parse_mode='HTML'
                 )
             elif "forbidden" in error_msg.lower():
                 await message.answer(
-                    f"❌ <b>Доступ запрещен к каналу {safe_channel}</b>\n\n"
-                    "Убедитесь, что:\n"
-                    "• Бот добавлен как администратор\n"
-                    "• У бота есть права на публикацию",
+                    f"❌ <b>Access denied to channel {safe_channel}</b>\n\n"
+                    "Make sure that:\n"
+                    "• Bot is added as administrator\n"
+                    "• Bot has posting permissions",
                     parse_mode='HTML'
                 )
             else:
                 await message.answer(
-                    f"❌ <b>Ошибка при отправке поста:</b>\n\n"
+                    f"❌ <b>Error sending post:</b>\n\n"
                     f"{safe_error}",
                     parse_mode='HTML'
                 )
 
     except Exception as e:
-        logging.error(f"Ошибка генерации тестового поста: {e}")
+        logging.error(f"Error generating test post: {e}")
         await message.answer(
-            "❌ Произошла ошибка при генерации поста. Попробуйте позже.",
+            "❌ An error occurred while generating the post. Please try later.",
             reply_markup=get_main_menu_keyboard()
         )
 
@@ -349,8 +347,8 @@ async def back_to_category_selection(callback: CallbackQuery, state: FSMContext)
     await state.set_state(UserStates.selecting_category)
 
     text = (
-        "🧪 <b>Тестовый постинг</b>\n\n"
-        "Выберите категорию новостей:"
+        "🧪 <b>Test Posting</b>\n\n"
+        "Select news category:"
     )
 
     await send_text_only(callback, text, get_category_keyboard())
@@ -365,24 +363,24 @@ async def back_to_style_selection(callback: CallbackQuery, state: FSMContext):
 
     category_names = {
         'it': '💻 IT & Tech',
-        'crypto': '₿ Криптовалюты',
-        'business': '💼 Бизнес',
-        'general': '🌍 Общие новости',
-        'esports': '🎮 Киберспорт',
-        'tech': '📱 Технологии',
-        'politics': '🏛️ Политика',
-        'science': '🔬 Наука',
-        'auto': '🚗 Авто',
-        'health': '💊 Здоровье',
-        'entertainment': '🎭 Развлечения',
-        'sport': '⚽ Спорт'
+        'crypto': '₿ Cryptocurrency',
+        'business': '💼 Business',
+        'general': '🌍 General News',
+        'esports': '🎮 Esports',
+        'tech': '📱 Technology',
+        'politics': '🏛️ Politics',
+        'science': '🔬 Science',
+        'auto': '🚗 Automotive',
+        'health': '💊 Health',
+        'entertainment': '🎭 Entertainment',
+        'sport': '⚽ Sports'
     }
 
-    category_name = category_names.get(category, 'Неизвестно')
+    category_name = category_names.get(category, 'Unknown')
 
     text = (
-        f"✅ Выбрана категория: <b>{category_name}</b>\n\n"
-        "Выберите стиль оформления постов:"
+        f"✅ Selected category: <b>{category_name}</b>\n\n"
+        "Select post formatting style:"
     )
 
     await send_text_only(callback, text, get_style_keyboard())

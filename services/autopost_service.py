@@ -33,7 +33,7 @@ class AutopostService:
                 await self.process_user_autoposts(db, subscription.user_id)
 
         except Exception as e:
-            logging.error(f"Ошибка обработки автопостов: {e}")
+            logging.error(f"Error processing autoposts: {e}")
 
     async def process_user_autoposts(self, db: AsyncSession, user_id: int):
         try:
@@ -54,7 +54,7 @@ class AutopostService:
                     await self.create_scheduled_posts(db, setting)
 
         except Exception as e:
-            logging.error(f"Ошибка обработки автопостов пользователя {user_id}: {e}")
+            logging.error(f"Error processing user autoposts {user_id}: {e}")
 
     def should_post_now(self, settings: AutopostSettings, current_time: str) -> bool:
         if not settings.specific_times:
@@ -74,7 +74,7 @@ class AutopostService:
             )
 
             if not news_list:
-                logging.warning(f"Нет новостей для категории {settings.category}")
+                logging.warning(f"No news for category {settings.category}")
                 return
 
             news_item = news_list[0]
@@ -86,7 +86,7 @@ class AutopostService:
             await self.send_to_channel(settings.channel_id, content)
 
         except Exception as e:
-            logging.error(f"Ошибка создания постов для настройки {settings.id}: {e}")
+            logging.error(f"Error creating posts for setting {settings.id}: {e}")
 
     async def send_to_channel(self, channel_id: str, content: str):
         try:
@@ -97,21 +97,21 @@ class AutopostService:
                 disable_web_page_preview=False
             )
 
-            logging.info(f"Пост отправлен в канал {channel_id}")
+            logging.info(f"Post sent to channel {channel_id}")
 
         except Exception as e:
-            logging.error(f"Ошибка отправки в канал {channel_id}: {e}")
+            logging.error(f"Error sending to channel {channel_id}: {e}")
 
     async def send_single_post(self, db: AsyncSession, user_id: int, channel_id: str, category: str, style: str):
         try:
             news_list = await self.news_service.get_news_by_category(category, limit=1)
 
             if not news_list:
-                logging.warning(f"Нет новостей для категории {category}")
+                logging.warning(f"No news for category {category}")
                 try:
                     await self.bot.send_message(
                         chat_id=user_id,
-                        text=f"❌ Нет доступных новостей для категории {category}"
+                        text=f"❌ No available news for category {category}"
                     )
                 except:
                     pass
@@ -125,20 +125,20 @@ class AutopostService:
             try:
                 await self.bot.send_message(
                     chat_id=user_id,
-                    text=f"✅ Пост успешно отправлен в канал {channel_id}"
+                    text=f"✅ Post successfully sent to channel {channel_id}"
                 )
             except:
                 pass
 
-            logging.info(f"Ручной пост отправлен в {channel_id} для пользователя {user_id}")
+            logging.info(f"Manual post sent to {channel_id} for user {user_id}")
 
         except Exception as e:
-            logging.error(f"Ошибка отправки ручного поста: {e}")
+            logging.error(f"Error sending manual post: {e}")
 
             try:
                 await self.bot.send_message(
                     chat_id=user_id,
-                    text=f"❌ Ошибка отправки поста в канал {channel_id}\n\nПроверьте права бота в канале."
+                    text=f"❌ Error sending post to channel {channel_id}\n\nCheck bot permissions in the channel."
                 )
             except:
                 pass
@@ -172,7 +172,7 @@ class AutopostService:
                         await self.create_scheduled_posts(db, setting)
 
         except Exception as e:
-            logging.error(f"Ошибка обработки кастомных постов: {e}")
+            logging.error(f"Error processing custom time posts: {e}")
 
     async def send_test_post(self, channel_id: str, category: str, style: str) -> bool:
         try:
@@ -184,28 +184,28 @@ class AutopostService:
             news_item = news_list[0]
             content = await self.content_generator.generate_post(news_item, style)
 
-            test_content = f"🧪 <b>ТЕСТОВЫЙ ПОСТ</b>\n\n{content}\n\n<i>Это тестовое сообщение для проверки настроек</i>"
+            test_content = f"🧪 <b>TEST POST</b>\n\n{content}\n\n<i>This is a test message to verify settings</i>"
 
             await self.send_to_channel(channel_id, test_content)
             return True
 
         except Exception as e:
-            logging.error(f"Ошибка отправки тестового поста: {e}")
+            logging.error(f"Error sending test post: {e}")
             return False
 
     async def get_news_for_category(self, category: str, limit: int = 1) -> List[NewsItem]:
         try:
             return await self.news_service.get_news_by_category(category, limit)
         except Exception as e:
-            logging.error(f"Ошибка получения новостей для категории {category}: {e}")
+            logging.error(f"Error getting news for category {category}: {e}")
             return []
 
     async def format_post(self, news_item: NewsItem, style: str) -> str:
         try:
             return await self.content_generator.generate_post(news_item, style)
         except Exception as e:
-            logging.error(f"Ошибка форматирования поста: {e}")
-            return "Ошибка форматирования контента"
+            logging.error(f"Error formatting post: {e}")
+            return "Post formatting error"
 
     async def validate_channel_access(self, channel_id: str) -> dict:
         try:
@@ -261,18 +261,18 @@ class AutopostService:
                     await asyncio.sleep(2)
                 except Exception as e:
                     failed += 1
-                    logging.error(f"Ошибка массовой отправки поста: {e}")
+                    logging.error(f"Error in bulk post sending: {e}")
 
             try:
                 await self.bot.send_message(
                     chat_id=user_id,
-                    text=f"📊 Массовая отправка завершена\n\n✅ Успешно: {successful}\n❌ Ошибок: {failed}"
+                    text=f"📊 Bulk sending completed\n\n✅ Successful: {successful}\n❌ Errors: {failed}"
                 )
             except:
                 pass
 
         except Exception as e:
-            logging.error(f"Ошибка массовой отправки постов: {e}")
+            logging.error(f"Error in bulk post sending: {e}")
 
     async def schedule_delayed_post(self, user_id: int, channel_id: str, category: str, style: str, delay_minutes: int):
         try:
@@ -287,13 +287,13 @@ class AutopostService:
             try:
                 await self.bot.send_message(
                     chat_id=user_id,
-                    text=f"⏰ Пост запланирован на отправку через {delay_minutes} минут"
+                    text=f"⏰ Post scheduled for {delay_minutes} minutes"
                 )
             except:
                 pass
 
         except Exception as e:
-            logging.error(f"Ошибка планирования отложенного поста: {e}")
+            logging.error(f"Error scheduling delayed post: {e}")
 
     async def get_user_autopost_stats(self, db: AsyncSession, user_id: int) -> dict:
         try:
@@ -321,7 +321,7 @@ class AutopostService:
             }
 
         except Exception as e:
-            logging.error(f"Ошибка получения статистики автопостинга: {e}")
+            logging.error(f"Error getting autopost statistics: {e}")
             return {
                 'total_settings': 0,
                 'unique_channels': 0,
@@ -351,13 +351,13 @@ class AutopostService:
             try:
                 await self.bot.send_message(
                     chat_id=user_id,
-                    text=f"⏸️ Автопостинг приостановлен на {pause_hours} часов"
+                    text=f"⏸️ Autoposting paused for {pause_hours} hours"
                 )
             except:
                 pass
 
         except Exception as e:
-            logging.error(f"Ошибка приостановки автопостинга: {e}")
+            logging.error(f"Error pausing autoposting: {e}")
 
     async def resume_user_autoposts(self, db: AsyncSession, user_id: int):
         try:
@@ -377,22 +377,22 @@ class AutopostService:
             try:
                 await self.bot.send_message(
                     chat_id=user_id,
-                    text="▶️ Автопостинг возобновлен"
+                    text="▶️ Autoposting resumed"
                 )
             except:
                 pass
 
         except Exception as e:
-            logging.error(f"Ошибка возобновления автопостинга: {e}")
+            logging.error(f"Error resuming autoposting: {e}")
 
     async def cleanup_failed_posts(self, db: AsyncSession, hours_old: int = 24):
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours_old)
 
-            logging.info(f"Очистка неудачных постов старше {hours_old} часов")
+            logging.info(f"Cleaning up failed posts older than {hours_old} hours")
 
         except Exception as e:
-            logging.error(f"Ошибка очистки неудачных постов: {e}")
+            logging.error(f"Error cleaning up failed posts: {e}")
 
     async def get_posting_analytics(self, db: AsyncSession, days: int = 7) -> dict:
         try:
@@ -431,7 +431,7 @@ class AutopostService:
             return analytics
 
         except Exception as e:
-            logging.error(f"Ошибка получения аналитики постинга: {e}")
+            logging.error(f"Error getting posting analytics: {e}")
             return {
                 'error': str(e),
                 'period_days': days,

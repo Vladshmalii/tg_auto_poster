@@ -25,7 +25,7 @@ async def send_text_only(callback: CallbackQuery, text: str, reply_markup=None):
             parse_mode='HTML'
         )
     except Exception as e:
-        logging.warning(f"Не удалось удалить сообщение: {e}")
+        logging.warning(f"Failed to delete message: {e}")
         await callback.bot.send_message(
             chat_id=callback.message.chat.id,
             text=text,
@@ -36,27 +36,27 @@ async def send_text_only(callback: CallbackQuery, text: str, reply_markup=None):
 
 def format_subscription_status(subscription):
     if not subscription:
-        return "❌ Подписки нет"
+        return "❌ No subscription"
 
     if not subscription.is_active:
-        return "🔴 Подписка неактивна"
+        return "🔴 Subscription inactive"
 
     expires_at = subscription.expires_at
     now = datetime.utcnow()
 
     if expires_at <= now:
-        return "⏰ Подписка истекла"
+        return "⏰ Subscription expired"
 
     time_left = expires_at - now
     days_left = time_left.days
     hours_left = time_left.seconds // 3600
 
     if days_left > 0:
-        return f"🟢 Активна ({days_left} дн.)"
+        return f"🟢 Active ({days_left} days)"
     elif hours_left > 0:
-        return f"🟡 Активна ({hours_left} ч.)"
+        return f"🟡 Active ({hours_left} hours)"
     else:
-        return "🔴 Истекает сегодня"
+        return "🔴 Expires today"
 
 
 def get_subscription_emoji(plan_type):
@@ -71,26 +71,26 @@ def get_subscription_emoji(plan_type):
 def get_category_emoji_name(category):
     category_map = {
         'it': '💻 IT & Tech',
-        'crypto': '₿ Криптовалюты',
-        'business': '💼 Бизнес',
-        'general': '🌍 Общие новости',
-        'esports': '🎮 Киберспорт',
-        'tech': '📱 Технологии',
-        'politics': '🏛️ Политика',
-        'science': '🔬 Наука',
-        'auto': '🚗 Авто',
-        'health': '💊 Здоровье',
-        'entertainment': '🎭 Развлечения',
-        'sport': '⚽ Спорт'
+        'crypto': '₿ Cryptocurrencies',
+        'business': '💼 Business',
+        'general': '🌍 General news',
+        'esports': '🎮 Esports',
+        'tech': '📱 Technology',
+        'politics': '🏛️ Politics',
+        'science': '🔬 Science',
+        'auto': '🚗 Auto',
+        'health': '💊 Health',
+        'entertainment': '🎭 Entertainment',
+        'sport': '⚽ Sport'
     }
     return category_map.get(category, f"📄 {category}")
 
 
 def get_style_emoji_name(style):
     style_map = {
-        'formal': '🎩 Формальный',
-        'casual': '😎 Разговорный',
-        'meme': '🤪 Мемный'
+        'formal': '🎩 Formal',
+        'casual': '😎 Conversational',
+        'meme': '🤪 Meme'
     }
     return style_map.get(style, f"✏️ {style}")
 
@@ -110,37 +110,36 @@ def format_autopost_summary(data: dict) -> str:
     style = data.get('style', '')
     frequency = data.get('frequency', 1)
 
-    channels_text = '\n'.join([f"• {ch}" for ch in channels]) if channels else "❌ Не выбраны"
+    channels_text = '\n'.join([f"• {ch}" for ch in channels]) if channels else "❌ Not selected"
 
     category_names = [get_category_emoji_name(cat) for cat in categories]
-    categories_text = '\n'.join([f"• {name}" for name in category_names]) if categories else "❌ Не выбраны"
+    categories_text = '\n'.join([f"• {name}" for name in category_names]) if categories else "❌ Not selected"
 
-    style_text = get_style_emoji_name(style) if style else "❌ Не выбран"
+    style_text = get_style_emoji_name(style) if style else "❌ Not selected"
 
     schedule_names = {
-        1: "1 раз в день (09:00)",
-        2: "2 раза в день (09:00, 21:00)",
-        3: "3 раза в день (09:00, 15:00, 21:00)"
+        1: "Once a day (09:00)",
+        2: "Twice a day (09:00, 21:00)",
+        3: "Three times a day (09:00, 15:00, 21:00)"
     }
     schedule_text = schedule_names.get(frequency, "❌ Не настроено")
 
-    return f"""📋 <b>Сводка настроек автопостинга</b>
+    return f"""📋 <b>Summary of auto-posting settings</b>
 
-📺 <b>Каналы:</b>
+📺 <b>Channels:</b>
 {channels_text}
 
-📂 <b>Категории:</b>
+📂 <b>Categories:</b>
 {categories_text}
 
-🎨 <b>Стиль:</b> {style_text}
+🎨 <b>Style:</b> {style_text}
 
-⏰ <b>Расписание:</b> {schedule_text}
+⏰ <b>Schedule:</b> {schedule_text}
 
-💡 Проверьте настройки перед сохранением"""
+💡 Check the settings before saving"""
 
 
 async def get_user_post_stats(db: AsyncSession, user_id: int, channel_id: str = None):
-    """Получить статистику постов пользователя за сегодня"""
     today = date.today()
 
     query = select(func.count(PostLog.id)).where(
@@ -173,7 +172,7 @@ async def show_profile(callback: CallbackQuery, state: FSMContext):
             if not user:
                 await send_text_only(
                     callback,
-                    "❌ Пользователь не найден в системе",
+                    "❌ User not found in the system",
                     get_main_menu_keyboard()
                 )
                 await callback.answer()
@@ -207,7 +206,6 @@ async def show_profile(callback: CallbackQuery, state: FSMContext):
             )
             payments = payments_result.scalars().all()
 
-            # Получаем статистику постов за сегодня
             posts_today = await get_user_post_stats(db, user.id)
 
             total_spent = sum(payment.amount for payment in payments)
@@ -215,10 +213,10 @@ async def show_profile(callback: CallbackQuery, state: FSMContext):
             last_payment = payments[0] if payments else None
 
             profile_text = (
-                f"👤 <b>Мой профиль</b>\n\n"
+                f"👤 <b>My Profile</b>\n\n"
                 f"🆔 ID: <code>{user.telegram_id}</code>\n"
-                f"👤 Username: @{user.username or 'Не указан'}\n"
-                f"📅 Регистрация: {user.created_at.strftime('%d.%m.%Y')}\n\n"
+                f"👤 Username: @{user.username or 'Not set'}\n"
+                f"📅 Registered: {user.created_at.strftime('%d.%m.%Y')}\n\n"
             )
 
             if subscription:
@@ -227,60 +225,59 @@ async def show_profile(callback: CallbackQuery, state: FSMContext):
                 expires_date = subscription.expires_at.strftime('%d.%m.%Y %H:%M')
 
                 profile_text += (
-                    f"📦 <b>Текущая подписка</b>\n"
-                    f"{emoji} План: {subscription.plan_type} дней\n"
-                    f"📊 Статус: {status}\n"
-                    f"⏰ Действует до: {expires_date}\n\n"
+                    f"📦 <b>Current Subscription</b>\n"
+                    f"{emoji} Plan: {subscription.plan_type} days\n"
+                    f"📊 Status: {status}\n"
+                    f"⏰ Valid until: {expires_date}\n\n"
                 )
             else:
                 profile_text += (
-                    f"📦 <b>Подписка</b>\n"
-                    f"❌ Активной подписки нет\n"
-                    f"💡 Приобретите подписку для доступа к функциям\n\n"
+                    f"📦 <b>Subscription</b>\n"
+                    f"❌ No active subscription\n"
+                    f"💡 Purchase a subscription to access features\n\n"
                 )
 
-            # Добавляем статистику постов
             profile_text += (
-                f"📊 <b>Статистика постов</b>\n"
-                f"📈 Сегодня отправлено: {posts_today}/3\n"
-                f"⏰ Лимит обновляется в 00:00\n\n"
+                f"📊 <b>Post Statistics</b>\n"
+                f"📈 Sent today: {posts_today}/3\n"
+                f"⏰ Limit resets at 00:00\n\n"
             )
 
             if payments:
                 last_payment_date = last_payment.created_at.strftime('%d.%m.%Y')
                 profile_text += (
-                    f"💳 <b>Статистика платежей</b>\n"
-                    f"💰 Всего потрачено: {total_spent} ⭐\n"
-                    f"📊 Количество покупок: {total_payments}\n"
-                    f"📅 Последний платеж: {last_payment_date}\n\n"
+                    f"💳 <b>Payment Statistics</b>\n"
+                    f"💰 Total spent: {total_spent} ⭐\n"
+                    f"📊 Number of purchases: {total_payments}\n"
+                    f"📅 Last payment: {last_payment_date}\n\n"
                 )
             else:
                 profile_text += (
-                    f"🎁 <b>Подарочные подписки</b>\n"
-                    f"💡 У вас есть возможность получить подарочную подписку!\n"
-                    f"🎯 Участвуйте в розыгрышах и акциях\n"
-                    f"🔔 Следите за новостями в нашем канале\n\n"
+                    f"🎁 <b>Gift Subscriptions</b>\n"
+                    f"💡 You have the opportunity to get a gift subscription!\n"
+                    f"🎯 Participate in giveaways and promotions\n"
+                    f"🔔 Follow our channel for updates\n\n"
                 )
 
             if subscription_history:
-                profile_text += f"📜 <b>История подписок</b>\n"
+                profile_text += f"📜 <b>Subscription History</b>\n"
                 for i, sub in enumerate(subscription_history[:3], 1):
                     emoji = get_subscription_emoji(sub.plan_type)
                     status_emoji = "🟢" if sub.is_active else "🔴"
                     created_date = sub.created_at.strftime('%d.%m.%Y')
-                    profile_text += f"{status_emoji} {emoji} {sub.plan_type}д - {created_date}\n"
+                    profile_text += f"{status_emoji} {emoji} {sub.plan_type}d - {created_date}\n"
 
                 if len(subscription_history) > 3:
-                    profile_text += f"... и еще {len(subscription_history) - 3}\n"
+                    profile_text += f"... and {len(subscription_history) - 3} more\n"
 
             await send_text_only(callback, profile_text, get_profile_keyboard())
             break
 
     except Exception as e:
-        logging.error(f"Ошибка получения профиля: {e}")
+        logging.error(f"Error retrieving profile: {e}")
         await send_text_only(
             callback,
-            "❌ Произошла ошибка при загрузке профиля",
+            "❌ Error loading profile",
             get_main_menu_keyboard()
         )
 
@@ -289,7 +286,6 @@ async def show_profile(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "manual_post")
 async def show_manual_post_menu(callback: CallbackQuery, state: FSMContext):
-    """Меню ручной отправки постов"""
     try:
         async for db in get_db():
             user_result = await db.execute(
@@ -298,7 +294,7 @@ async def show_manual_post_menu(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             subscription_result = await db.execute(
@@ -314,10 +310,10 @@ async def show_manual_post_menu(callback: CallbackQuery, state: FSMContext):
 
             if not active_subscription:
                 text = (
-                    "📤 <b>Ручная отправка постов</b>\n\n"
-                    "❌ <b>Требуется активная подписка</b>\n\n"
-                    "Для ручной отправки постов необходима активная подписка.\n\n"
-                    "💎 Приобретите подписку для доступа к функции"
+                    "📤 <b>Manual Post Sending</b>\n\n"
+                    "❌ <b>An active subscription is required</b>\n\n"
+                    "You need an active subscription to send posts manually.\n\n"
+                    "💎 Purchase a subscription to access this feature"
                 )
                 await send_text_only(callback, text, get_profile_keyboard())
                 await callback.answer()
@@ -335,46 +331,44 @@ async def show_manual_post_menu(callback: CallbackQuery, state: FSMContext):
 
             if not setting:
                 text = (
-                    "📤 <b>Ручная отправка постов</b>\n\n"
-                    "❌ <b>Автопостинг не настроен</b>\n\n"
-                    "Сначала настройте автопостинг в разделе 'Настройки постинга'.\n\n"
-                    "💡 После настройки здесь появятся функции ручной отправки"
+                    "📤 <b>Manual Post Sending</b>\n\n"
+                    "❌ <b>Autoposting is not configured</b>\n\n"
+                    "First, set up autoposting in the 'Posting Settings' section.\n\n"
+                    "💡 After setup, manual posting features will appear here"
                 )
                 await send_text_only(callback, text, get_profile_keyboard())
                 await callback.answer()
                 return
 
-            # Получаем статистику постов за сегодня для этого канала
             posts_today = await get_user_post_stats(db, user.id, setting.channel_id)
 
             text = (
-                "📤 <b>Ручная отправка постов</b>\n\n"
-                "Выберите действие:\n\n"
-                "🚀 <b>Отправить сейчас</b> - немедленная отправка поста\n"
-                "⏰ <b>Запланировать</b> - отправка в указанное время\n\n"
-                f"📺 <b>Канал:</b> {setting.channel_id}\n"
-                f"📂 <b>Категория:</b> {get_category_emoji_name(setting.category)}\n"
-                f"🎨 <b>Стиль:</b> {get_style_emoji_name(setting.style)}\n\n"
-                f"📊 <b>Лимит постов:</b> {posts_today}/3 сегодня\n"
+                "📤 <b>Manual Post Sending</b>\n\n"
+                "Choose an action:\n\n"
+                "🚀 <b>Send now</b> - send a post immediately\n"
+                "⏰ <b>Schedule</b> - send at a specified time\n\n"
+                f"📺 <b>Channel:</b> {setting.channel_id}\n"
+                f"📂 <b>Category:</b> {get_category_emoji_name(setting.category)}\n"
+                f"🎨 <b>Style:</b> {get_style_emoji_name(setting.style)}\n\n"
+                f"📊 <b>Post limit:</b> {posts_today}/3 today\n"
             )
 
             if posts_today >= 3:
-                text += "⚠️ <b>Лимит исчерпан!</b> Попробуйте завтра"
+                text += "⚠️ <b>Limit reached!</b> Try again tomorrow"
 
             from bot.keyboards import get_manual_post_keyboard
             await send_text_only(callback, text, get_manual_post_keyboard(posts_today >= 3))
             break
 
     except Exception as e:
-        logging.error(f"Ошибка показа меню ручной отправки: {e}")
-        await send_text_only(callback, "❌ Произошла ошибка", get_profile_keyboard())
+        logging.error(f"Error showing manual post menu: {e}")
+        await send_text_only(callback, "❌ An error occurred", get_profile_keyboard())
 
     await callback.answer()
 
 
 @router.callback_query(F.data == "manual_send_now")
 async def manual_send_now(callback: CallbackQuery, state: FSMContext):
-    """Отправка поста прямо сейчас"""
     try:
         async for db in get_db():
             user_result = await db.execute(
@@ -383,7 +377,7 @@ async def manual_send_now(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             settings_result = await db.execute(
@@ -397,15 +391,14 @@ async def manual_send_now(callback: CallbackQuery, state: FSMContext):
             setting = settings_result.scalar_one_or_none()
 
             if not setting:
-                await callback.answer("❌ Настройки автопостинга не найдены", show_alert=True)
+                await callback.answer("❌ Auto-posting settings not found", show_alert=True)
                 return
 
-            # Проверяем лимит постов
             posts_today = await get_user_post_stats(db, user.id, setting.channel_id)
 
             if posts_today >= 3:
                 await callback.answer(
-                    f"❌ Лимит исчерпан! Сегодня отправлено {posts_today}/3 постов",
+                    f"❌ Limit reached! {posts_today}/3 posts sent today",
                     show_alert=True
                 )
                 return
@@ -418,25 +411,24 @@ async def manual_send_now(callback: CallbackQuery, state: FSMContext):
             )
 
             text = (
-                "🚀 <b>Пост отправляется!</b>\n\n"
-                f"📺 Канал: {setting.channel_id}\n"
-                f"📂 Категория: {get_category_emoji_name(setting.category)}\n"
-                f"🎨 Стиль: {get_style_emoji_name(setting.style)}\n"
-                f"📊 Будет: {posts_today + 1}/3 постов сегодня\n\n"
-                "⏳ Пост будет опубликован в течение минуты"
+                "🚀 <b>Post is being sent!</b>\n\n"
+                f"📺 Channel: {setting.channel_id}\n"
+                f"📂 Category: {get_category_emoji_name(setting.category)}\n"
+                f"🎨 Style: {get_style_emoji_name(setting.style)}\n"
+                f"📊 Will be: {posts_today + 1}/3 posts today\n\n"
+                "⏳ The post will be published within a minute"
             )
 
             await send_text_only(callback, text, get_profile_keyboard())
             break
 
     except Exception as e:
-        logging.error(f"Ошибка ручной отправки: {e}")
-        await callback.answer("❌ Ошибка при отправке поста", show_alert=True)
+        logging.error(f"Error sending manual post: {e}")
+        await callback.answer("❌ Error sending post", show_alert=True)
 
 
 @router.callback_query(F.data == "manual_schedule")
 async def manual_schedule_setup(callback: CallbackQuery, state: FSMContext):
-    """Настройка запланированной отправки"""
     try:
         async for db in get_db():
             user_result = await db.execute(
@@ -445,7 +437,7 @@ async def manual_schedule_setup(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             settings_result = await db.execute(
@@ -459,21 +451,20 @@ async def manual_schedule_setup(callback: CallbackQuery, state: FSMContext):
             setting = settings_result.scalar_one_or_none()
 
             if not setting:
-                await callback.answer("❌ Настройки автопостинга не найдены", show_alert=True)
+                await callback.answer("❌ Autoposting settings not found", show_alert=True)
                 return
 
-            # Проверяем текущий лимит
             posts_today = await get_user_post_stats(db, user.id, setting.channel_id)
 
             await state.set_state(UserStates.scheduling_manual_post)
 
             text = (
-                "⏰ <b>Запланировать отправку поста</b>\n\n"
-                "Отправьте время в формате ЧЧ:ММ\n"
-                "Например: <code>15:23</code> или <code>09:00</code>\n\n"
-                "📅 Если время уже прошло сегодня, пост будет отправлен завтра\n"
-                f"📊 Текущий лимит: {posts_today}/3 постов сегодня\n\n"
-                "💡 Введите время:"
+                "⏰ <b>Schedule a post</b>\n\n"
+                "Send the time in HH:MM format\n"
+                "For example: <code>15:23</code> or <code>09:00</code>\n\n"
+                "📅 If the time has already passed today, the post will be sent tomorrow\n"
+                f"📊 Current limit: {posts_today}/3 posts today\n\n"
+                "💡 Enter the time:"
             )
 
             from bot.keyboards import get_manual_schedule_cancel_keyboard
@@ -481,15 +472,14 @@ async def manual_schedule_setup(callback: CallbackQuery, state: FSMContext):
             break
 
     except Exception as e:
-        logging.error(f"Ошибка настройки планирования: {e}")
-        await callback.answer("❌ Ошибка при настройке планирования", show_alert=True)
+        logging.error(f"Error scheduling setup: {e}")
+        await callback.answer("❌ Error setting up scheduling", show_alert=True)
 
     await callback.answer()
 
 
 @router.message(UserStates.scheduling_manual_post)
 async def process_schedule_time(message: Message, state: FSMContext):
-    """Обработка времени для запланированной отправки"""
     time_input = message.text.strip()
 
     try:
@@ -498,8 +488,8 @@ async def process_schedule_time(message: Message, state: FSMContext):
             raise ValueError
     except (ValueError, IndexError):
         await message.answer(
-            "❌ <b>Неверный формат времени!</b>\n\n"
-            "Используйте формат ЧЧ:ММ (например: 15:23)",
+            "❌ <b>Invalid time format!</b>\n\n"
+            "Use the HH:MM format (for example: 15:23)",
             parse_mode='HTML'
         )
         return
@@ -512,7 +502,7 @@ async def process_schedule_time(message: Message, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await message.answer("❌ Пользователь не найден")
+                await message.answer("❌ User not found")
                 return
 
             settings_result = await db.execute(
@@ -526,7 +516,7 @@ async def process_schedule_time(message: Message, state: FSMContext):
             setting = settings_result.scalar_one_or_none()
 
             if not setting:
-                await message.answer("❌ Настройки автопостинга не найдены")
+                await message.answer("❌ Autoposting settings not found")
                 return
 
             schedule_post_at_time.delay(
@@ -543,18 +533,18 @@ async def process_schedule_time(message: Message, state: FSMContext):
 
             if target_datetime <= now:
                 target_datetime += timedelta(days=1)
-                day_text = "завтра"
+                day_text = "tomorrow"
             else:
-                day_text = "сегодня"
+                day_text = "today"
 
             text = (
-                "✅ <b>Пост запланирован!</b>\n\n"
-                f"⏰ Время отправки: {time_input} ({day_text})\n"
-                f"📺 Канал: {setting.channel_id}\n"
-                f"📂 Категория: {get_category_emoji_name(setting.category)}\n"
-                f"🎨 Стиль: {get_style_emoji_name(setting.style)}\n\n"
-                "🔔 Пост будет автоматически отправлен в указанное время\n"
-                "⚠️ Учитывается лимит 3 поста в день"
+                "✅ <b>Post scheduled!</b>\n\n"
+                f"⏰ Send time: {time_input} ({day_text})\n"
+                f"📺 Channel: {setting.channel_id}\n"
+                f"📂 Category: {get_category_emoji_name(setting.category)}\n"
+                f"🎨 Style: {get_style_emoji_name(setting.style)}\n\n"
+                "🔔 The post will be sent automatically at the specified time\n"
+                "⚠️ The 3 posts per day limit applies"
             )
 
             await message.answer(text, reply_markup=get_profile_keyboard(), parse_mode='HTML')
@@ -562,11 +552,10 @@ async def process_schedule_time(message: Message, state: FSMContext):
             break
 
     except Exception as e:
-        logging.error(f"Ошибка планирования поста: {e}")
-        await message.answer("❌ Ошибка при планировании поста")
+        logging.error(f"Error scheduling post: {e}")
+        await message.answer("❌ Error scheduling post")
 
 
-# Все остальные функции остаются без изменений - копирую их полностью
 @router.callback_query(F.data == "profile_subscription")
 async def show_subscription_details(callback: CallbackQuery, state: FSMContext):
     try:
@@ -577,7 +566,7 @@ async def show_subscription_details(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             subscriptions_result = await db.execute(
@@ -589,16 +578,16 @@ async def show_subscription_details(callback: CallbackQuery, state: FSMContext):
 
             if not subscriptions:
                 text = (
-                    "📦 <b>Подписки</b>\n\n"
-                    "❌ У вас пока нет подписок\n\n"
-                    "💡 Приобретите подписку для доступа к:\n"
-                    "• Автоматическому постингу новостей\n"
-                    "• Выбору категорий и стилей\n"
-                    "• Настройке расписания\n"
-                    "• До 3 постов в день"
+                    "📦 <b>Subscriptions</b>\n\n"
+                    "❌ You have no subscriptions yet\n\n"
+                    "💡 Purchase a subscription to access:\n"
+                    "• Automatic news posting\n"
+                    "• Category and style selection\n"
+                    "• Schedule setup\n"
+                    "• Up to 3 posts per day"
                 )
             else:
-                text = "📦 <b>Детали подписок</b>\n\n"
+                text = "📦 <b>Subscription Details</b>\n\n"
 
                 for i, sub in enumerate(subscriptions, 1):
                     emoji = get_subscription_emoji(sub.plan_type)
@@ -607,10 +596,10 @@ async def show_subscription_details(callback: CallbackQuery, state: FSMContext):
                     expires_date = sub.expires_at.strftime('%d.%m.%Y %H:%M')
 
                     text += (
-                        f"{i}. {emoji} <b>Подписка {sub.plan_type} дней</b>\n"
-                        f"📊 Статус: {status}\n"
-                        f"📅 Создана: {created_date}\n"
-                        f"⏰ Истекает: {expires_date}\n"
+                        f"{i}. {emoji} <b>Subscription {sub.plan_type} days</b>\n"
+                        f"📊 Status: {status}\n"
+                        f"📅 Created: {created_date}\n"
+                        f"⏰ Expires: {expires_date}\n"
                     )
 
                     if sub.is_active:
@@ -621,9 +610,9 @@ async def show_subscription_details(callback: CallbackQuery, state: FSMContext):
                             hours_left = time_left.seconds // 3600
 
                             if days_left > 0:
-                                text += f"⏳ Осталось: {days_left} дн. {hours_left} ч.\n"
+                                text += f"⏳ Remaining: {days_left} days {hours_left} hours\n"
                             else:
-                                text += f"⏳ Осталось: {hours_left} ч.\n"
+                                text += f"⏳ Remaining: {hours_left} hours\n"
 
                     text += "\n"
 
@@ -631,10 +620,10 @@ async def show_subscription_details(callback: CallbackQuery, state: FSMContext):
             break
 
     except Exception as e:
-        logging.error(f"Ошибка получения деталей подписки: {e}")
+        logging.error(f"Error retrieving subscription details: {e}")
         await send_text_only(
             callback,
-            "❌ Произошла ошибка при загрузке данных",
+            "❌ Error loading data",
             get_profile_keyboard()
         )
 
@@ -651,7 +640,7 @@ async def show_payment_history(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             payments_result = await db.execute(
@@ -663,34 +652,34 @@ async def show_payment_history(callback: CallbackQuery, state: FSMContext):
 
             if not payments:
                 text = (
-                    "💳 <b>История платежей</b>\n\n"
-                    "❌ Платежей пока не было\n\n"
-                    "💡 После первой покупки здесь появится история ваших транзакций"
+                    "💳 <b>Payment History</b>\n\n"
+                    "❌ No payments yet\n\n"
+                    "💡 After your first purchase, your transaction history will appear here"
                 )
             else:
                 total_spent = sum(p.amount for p in payments)
                 text = (
-                    f"💳 <b>История платежей</b>\n\n"
-                    f"💰 Всего потрачено: <b>{total_spent} ⭐</b>\n"
-                    f"📊 Количество платежей: <b>{len(payments)}</b>\n\n"
+                    f"💳 <b>Payment History</b>\n\n"
+                    f"💰 Total spent: <b>{total_spent} ⭐</b>\n"
+                    f"📊 Number of payments: <b>{len(payments)}</b>\n\n"
                 )
 
                 for i, payment in enumerate(payments, 1):
                     payment_date = payment.created_at.strftime('%d.%m.%Y %H:%M')
                     status_emoji = "✅" if payment.status == "completed" else "❌"
 
-                    plan_type = "неизвестно"
+                    plan_type = "unknown"
                     if payment.amount == 100:
-                        plan_type = "7 дней"
+                        plan_type = "7 days"
                     elif payment.amount == 180:
-                        plan_type = "14 дней"
+                        plan_type = "14 days"
                     elif payment.amount == 300:
-                        plan_type = "30 дней"
+                        plan_type = "30 days"
 
                     text += (
-                        f"{i}. {status_emoji} <b>{payment.amount} ⭐</b>\n"
-                        f"📦 План: {plan_type}\n"
-                        f"📅 Дата: {payment_date}\n"
+                        f"{i}. {status_emoji} {plan_type} — {payment.amount} ⭐ — {payment_date}\n"
+                        f"📦 Plan: {plan_type}\n"
+                        f"📅 Date: {payment_date}\n"
                         f"🆔 ID: <code>{payment.external_id[:12]}...</code>\n\n"
                     )
 
@@ -718,7 +707,7 @@ async def show_profile_settings(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             autopost_result = await db.execute(
@@ -736,40 +725,39 @@ async def show_profile_settings(callback: CallbackQuery, state: FSMContext):
             styles = set(setting.style for setting in autopost_settings)
 
             categories_text = ', '.join(
-                [get_category_emoji_name(cat) for cat in categories]) if categories else 'Не выбраны'
-            styles_text = ', '.join([get_style_emoji_name(style) for style in styles]) if styles else 'Не настроен'
+                [get_category_emoji_name(cat) for cat in categories]) if categories else 'Not selected'
+            styles_text = ', '.join([get_style_emoji_name(style) for style in styles]) if styles else 'Not configured'
 
-            # Получаем статистику постов
             posts_today = await get_user_post_stats(db, user.id)
 
             text = (
-                f"⚙️ <b>Настройки профиля</b>\n\n"
-                f"👤 <b>Основная информация:</b>\n"
+                f"⚙️ <b>Profile Settings</b>\n\n"
+                f"👤 <b>Basic Information:</b>\n"
                 f"🆔 Telegram ID: <code>{user.telegram_id}</code>\n"
-                f"👤 Username: @{user.username or 'Не указан'}\n"
-                f"🌐 Язык: {user.language}\n"
-                f"📅 Дата регистрации: {user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-                f"📊 <b>Статистика:</b>\n"
-                f"📈 Постов сегодня: {posts_today}/3\n"
-                f"⏰ Лимит обновляется в 00:00\n\n"
-                f"🔔 <b>Уведомления:</b>\n"
-                f"📱 Telegram уведомления: Включены\n"
-                f"📧 Email уведомления: Не настроены\n\n"
-                f"🤖 <b>Автопостинг:</b>\n"
-                f"📺 Подключенные каналы: {channels_count}\n"
-                f"📰 Активные категории: {categories_text}\n"
-                f"🎨 Стиль постов: {styles_text}\n\n"
-                f"💡 <b>Совет:</b> Настройте автопостинг после покупки подписки"
+                f"👤 Username: @{user.username or 'Not set'}\n"
+                f"🌐 Language: {user.language}\n"
+                f"📅 Registered: {user.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+                f"📊 <b>Statistics:</b>\n"
+                f"📈 Posts today: {posts_today}/3\n"
+                f"⏰ Limit resets at 00:00\n\n"
+                f"🔔 <b>Notifications:</b>\n"
+                f"📱 Telegram notifications: Enabled\n"
+                f"📧 Email notifications: Not configured\n\n"
+                f"🤖 <b>Autoposting:</b>\n"
+                f"📺 Connected channels: {channels_count}\n"
+                f"📰 Active categories: {categories_text}\n"
+                f"🎨 Post style: {styles_text}\n\n"
+                f"💡 <b>Tip:</b> Set up autoposting after purchasing a subscription"
             )
 
             await send_text_only(callback, text, get_profile_keyboard())
             break
 
     except Exception as e:
-        logging.error(f"Ошибка получения настроек: {e}")
+        logging.error(f"Error receiving settings: {e}")
         await send_text_only(
             callback,
-            "❌ Произошла ошибка при загрузке настроек",
+            "❌ An error occurred while loading settings",
             get_profile_keyboard()
         )
 
@@ -779,35 +767,35 @@ async def show_profile_settings(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "profile_help")
 async def show_profile_help(callback: CallbackQuery, state: FSMContext):
     text = (
-        "❓ <b>Помощь по профилю</b>\n\n"
+        "❓ <b>Profile Help</b>\n\n"
 
-        "<b>📦 Подписка</b>\n"
-        "• 🥉 7 дней - базовый план\n"
-        "• 🥈 14 дней - популярный план\n"
-        "• 🥇 30 дней - максимальный план\n\n"
+        "<b>📦 Subscription</b>\n"
+        "• 🥉 7 days - basic plan\n"
+        "• 🥈 14 days - popular plan\n"
+        "• 🥇 30 days - maximum plan\n\n"
 
-        "<b>📊 Лимиты постов:</b>\n"
-        "• Максимум 3 поста в день на канал\n"
-        "• Лимит обновляется в 00:00 МСК\n"
-        "• Автопостинг и ручные посты учитываются\n\n"
+        "<b>📊 Post Limits:</b>\n"
+        "• Maximum 3 posts per channel per day\n"
+        "• Limit resets at 00:00 MSK\n"
+        "• Both autoposting and manual posts count\n\n"
 
-        "<b>🔴 Статусы подписки:</b>\n"
-        "• 🟢 Активна - подписка работает\n"
-        "• 🟡 Истекает - менее суток осталось\n"
-        "• 🔴 Неактивна - подписка закончилась\n"
-        "• ❌ Нет подписки - не приобретена\n\n"
+        "<b>🔴 Subscription Statuses:</b>\n"
+        "• 🟢 Active - subscription is working\n"
+        "• 🟡 Expiring - less than a day left\n"
+        "• 🔴 Inactive - subscription expired\n"
+        "• ❌ No subscription - not purchased\n\n"
 
-        "<b>💳 Платежи:</b>\n"
-        "• ✅ Завершен - платеж прошел успешно\n"
-        "• ❌ Ошибка - проблема с платежом\n\n"
+        "<b>💳 Payments:</b>\n"
+        "• ✅ Completed - payment successful\n"
+        "• ❌ Error - payment issue\n\n"
 
-        "<b>⚙️ Настройки:</b>\n"
-        "• Telegram ID - ваш уникальный идентификатор\n"
-        "• Username - имя пользователя в Telegram\n"
-        "• Автопостинг - настройки публикации новостей\n\n"
+        "<b>⚙️ Settings:</b>\n"
+        "• Telegram ID - your unique identifier\n"
+        "• Username - your Telegram username\n"
+        "• Autoposting - news posting settings\n\n"
 
-        "🆘 <b>Нужна помощь?</b>\n"
-        "Обратитесь в поддержку через главное меню"
+        "🆘 <b>Need help?</b>\n"
+        "Contact support via the main menu"
     )
 
     await send_text_only(callback, text, get_profile_keyboard())
@@ -817,27 +805,27 @@ async def show_profile_help(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "profile_gifts")
 async def show_gift_subscriptions(callback: CallbackQuery, state: FSMContext):
     text = (
-        "🎁 <b>Подарочные подписки</b>\n\n"
+        "🎁 <b>Gift Subscriptions</b>\n\n"
 
-        "🌟 <b>Как получить бесплатную подписку?</b>\n\n"
+        "🌟 <b>How to get a free subscription?</b>\n\n"
 
-        "🎯 <b>Способы получения:</b>\n"
-        "• 🎲 Участвуйте в розыгрышах\n"
-        "• 🎈 Акции по праздникам\n"
-        "• 👥 Приводите друзей (реферальная программа)\n"
-        "• ⭐ Активность в сообществе\n"
-        "• 📝 Отзывы и предложения\n\n"
+        "🎯 <b>Ways to get it:</b>\n"
+        "• 🎲 Participate in giveaways\n"
+        "• 🎈 Holiday promotions\n"
+        "• 👥 Invite friends (referral program)\n"
+        "• ⭐ Be active in the community\n"
+        "• 📝 Leave feedback and suggestions\n\n"
 
-        "🏆 <b>Текущие акции:</b>\n"
-        "• 🎊 Приведи 3 друзей - получи 7 дней бесплатно\n"
-        "• 📱 Поделись в соцсетях - участвуй в розыгрыше\n"
-        "• 💬 Оставь отзыв - получи бонусы\n\n"
+        "🏆 <b>Current offers:</b>\n"
+        "• 🎊 Invite 3 friends - get 7 days free\n"
+        "• 📱 Share on social media - join the giveaway\n"
+        "• 💬 Leave a review - get bonuses\n\n"
 
-        "📢 <b>Следите за новостями:</b>\n"
-        "• Telegram канал: @newsbot_channel\n"
-        "• Уведомления о новых акциях\n\n"
+        "📢 <b>Stay tuned for news:</b>\n"
+        "• Telegram channel: @newsbot_channel\n"
+        "• Notifications about new offers\n\n"
 
-        "💡 <b>Совет:</b> Включите уведомления, чтобы не пропустить акции!"
+        "💡 <b>Tip:</b> Enable notifications so you don't miss promotions!"
     )
 
     await send_text_only(callback, text, get_profile_keyboard())
@@ -864,7 +852,7 @@ async def show_posting_settings(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             subscription_result = await db.execute(
@@ -879,14 +867,14 @@ async def show_posting_settings(callback: CallbackQuery, state: FSMContext):
 
             if not active_subscription:
                 text = (
-                    "⚙️ <b>Настройки автопостинга</b>\n\n"
-                    "❌ <b>Требуется активная подписка</b>\n\n"
-                    "Для настройки автоматического постинга необходимо:\n"
-                    "💎 Приобрести подписку\n"
-                    "📺 Добавить бота в канал как администратора\n"
-                    "📂 Выбрать категории новостей\n"
-                    "🎨 Настроить стиль постов\n\n"
-                    "💡 Приобретите подписку для доступа к настройкам"
+                    "⚙️ <b> Auto-posting Settings </b>\n\n"
+                    "❌ <b> Active Subscription Required </b>\n\n"
+                    "To configure automatic posting, you need to:\n"
+                    "💎 Purchase a subscription\n"
+                    "📺 Add the bot to your channel as an administrator\n"
+                    "📂 Choose news categories\n"
+                    "🎨 Customize post style\n\n"
+                    "💡 Purchase a subscription to access the settings"
                 )
                 await send_text_only(callback, text, get_profile_keyboard())
                 await callback.answer()
@@ -909,57 +897,57 @@ async def show_posting_settings(callback: CallbackQuery, state: FSMContext):
                 frequencies = list(set(setting.posts_per_day for setting in user_settings))
 
                 text = (
-                    "⚙️ <b>Настройки автопостинга</b>\n\n"
-                    "✅ <b>Автопостинг настроен и активен</b>\n\n"
+                    "⚙️ <b>Autoposting Settings</b>\n\n"
+                    "✅ <b>Autoposting is configured and active</b>\n\n"
                 )
 
                 if channels:
-                    text += f"📺 <b>Каналы ({len(channels)}):</b>\n"
+                    text += f"📺 <b>Channels ({len(channels)}):</b>\n"
                     for channel in channels[:3]:
                         text += f"• {channel}\n"
                     if len(channels) > 3:
-                        text += f"... и еще {len(channels) - 3}\n"
+                        text += f"... and {len(channels) - 3} more\n"
                     text += "\n"
 
                 if categories:
-                    text += f"📂 <b>Категории ({len(categories)}):</b>\n"
+                    text += f"📂 <b>Categories ({len(categories)}):</b>\n"
                     for category in categories[:4]:
                         text += f"• {get_category_emoji_name(category)}\n"
                     if len(categories) > 4:
-                        text += f"... и еще {len(categories) - 4}\n"
+                        text += f"... and {len(categories) - 4} more\n"
                     text += "\n"
 
                 if styles:
                     style_names = [get_style_emoji_name(style) for style in styles]
-                    text += f"🎨 <b>Стиль:</b> {', '.join(style_names)}\n\n"
+                    text += f"🎨 <b>Style:</b> {', '.join(style_names)}\n\n"
 
                 if frequencies:
-                    freq_text = ', '.join([f"{f} раз в день" for f in frequencies])
-                    text += f"⏰ <b>Расписание:</b> {freq_text}\n\n"
+                    freq_text = ', '.join([f"{f} times per day" for f in frequencies])
+                    text += f"⏰ <b>Schedule:</b> {freq_text}\n\n"
 
-                text += "💡 Выберите действие для управления настройками"
+                text += "💡 Choose an action to manage settings"
             else:
                 text = (
-                    "⚙️ <b>Настройки автопостинга</b>\n\n"
-                    "📊 <b>Статус:</b> ✅ Подписка активна\n\n"
-                    "❌ <b>Автопостинг не настроен</b>\n\n"
-                    "Для начала работы необходимо:\n"
-                    "📺 Добавить каналы\n"
-                    "📂 Выбрать категории новостей\n"
-                    "🎨 Настроить стиль постов\n"
-                    "⏰ Установить расписание\n\n"
-                    "💡 Создайте новую настройку для автопостинга"
+                    "⚙️ <b>Autoposting Settings</b>\n\n"
+                    "📊 <b>Status:</b> ✅ Subscription active\n\n"
+                    "❌ <b>Autoposting not configured</b>\n\n"
+                    "To get started, you need to:\n"
+                    "📺 Add channels\n"
+                    "📂 Select news categories\n"
+                    "🎨 Configure post style\n"
+                    "⏰ Set up schedule\n\n"
+                    "💡 Create a new autoposting setting"
                 )
 
-            from bot.keyboards import get_autopost_setup_keyboard
-            await send_text_only(callback, text, get_autopost_setup_keyboard())
-            break
+                from bot.keyboards import get_autopost_setup_keyboard
+                await send_text_only(callback, text, get_autopost_setup_keyboard())
+                break
 
     except Exception as e:
-        logging.error(f"Ошибка получения настроек постинга: {e}")
+        logging.error(f"Error getting posting settings: {e}")
         await send_text_only(
             callback,
-            "❌ Произошла ошибка при загрузке настроек",
+            "❌ An error occurred while loading settings",
             get_profile_keyboard()
         )
 
@@ -972,13 +960,13 @@ async def start_new_autopost_setup(callback: CallbackQuery, state: FSMContext):
     await state.update_data(current_step='channels', step_number=1)
 
     text = (
-        "📺 <b>Шаг 1/4: Настройка каналов</b>\n\n"
-        "📋 <b>Инструкция:</b>\n"
-        "1️⃣ Добавьте бота в ваш канал как администратора\n"
-        "2️⃣ Дайте права на 'Публикация сообщений'\n"
-        "3️⃣ Нажмите 'Добавить канал' и отправьте username\n\n"
-        "💡 Можно добавить несколько каналов\n\n"
-        "📺 <b>Добавленные каналы:</b>\n❌ Пока нет"
+        "📺 <b>Step 1/4: Channel setup</b>\n\n"
+        "📋 <b>Instructions:</b>\n"
+        "1️⃣ Add the bot to your channel as an admin\n"
+        "2️⃣ Grant 'Post Messages' permission\n"
+        "3️⃣ Click 'Add Channel' and send the username\n\n"
+        "💡 You can add multiple channels\n\n"
+        "📺 <b>Added channels:</b>\n❌ None yet"
     )
 
     from bot.keyboards import get_autopost_step_keyboard
@@ -1044,12 +1032,12 @@ async def process_add_channel_new(message: Message, state: FSMContext):
             channels_text = '\n'.join([f"• {ch}" for ch in channels])
 
             text = (
-                "📺 <b>Шаг 1/4: Настройка каналов</b>\n\n"
-                "📋 <b>Инструкция:</b>\n"
-                "1️⃣ Добавьте бота в ваш канал как администратора\n"
-                "2️⃣ Дайте права на 'Публикация сообщений'\n"
-                "3️⃣ Нажмите 'Добавить канал' и отправьте username\n\n"
-                "💡 Можно добавить несколько каналов\n\n"
+                "📺 <b>Step 1/4: Channel setup</b>\n\n"
+                "📋 <b>Instructions:</b>\n"
+                "1️⃣ Add the bot to your channel as an admin\n"
+                "2️⃣ Grant 'Post Messages' permission\n"
+                "3️⃣ Click 'Add Channel' and send the username\n\n"
+                "💡 You can add multiple channels\n\n"
                 f"📺 <b>Добавленные каналы:</b>\n{channels_text}"
             )
 
@@ -1067,18 +1055,19 @@ async def process_add_channel_new(message: Message, state: FSMContext):
         else:
             await message.answer(f"⚠️ Канал {channel_username} уже добавлен")
 
+
     except Exception as e:
         error_msg = str(e)
         if "chat not found" in error_msg.lower():
             await message.answer(
-                f"❌ <b>Канал {channel_username} не найден</b>\n\n"
-                "Проверьте правильность username канала.",
+                f"❌ <b>Channel {channel_username} not found</b>\n\n"
+                "Check that the channel username is correct.",
                 parse_mode='HTML'
             )
         else:
             await message.answer(
-                f"❌ <b>Ошибка при проверке канала</b>\n\n"
-                "Убедитесь, что бот добавлен в канал как администратор.",
+                f"❌ <b>Error checking channel</b>\n\n"
+                "Make sure the bot is added to the channel as an administrator.",
                 parse_mode='HTML'
             )
 
@@ -1092,17 +1081,17 @@ async def next_autopost_step(callback: CallbackQuery, state: FSMContext):
     if current_step == 'channels':
         channels = data.get('channels', [])
         if not channels:
-            await callback.answer("❌ Добавьте хотя бы один канал!", show_alert=True)
+            await callback.answer("❌ Add at least one channel!", show_alert=True)
             return
 
         await state.set_state(UserStates.selecting_categories)
         await state.update_data(current_step='categories', step_number=2)
 
         text = (
-            "📂 <b>Шаг 2/4: Выбор категорий</b>\n\n"
-            "Выберите категории новостей для автопостинга:\n\n"
-            "💡 <b>Совет:</b> Выбирайте 2-4 категории для лучшего качества\n\n"
-            "🎯 <b>Выбранные категории:</b> Пока не выбраны"
+            "📂 <b>Step 2/4: Category Selection</b>\n\n"
+            "Select news categories for autoposting:\n\n"
+            "💡 <b>Tip:</b> Choose 2-4 categories for better quality\n\n"
+            "🎯 <b>Selected categories:</b> None selected yet"
         )
 
         from bot.keyboards import get_category_selection_keyboard_new
@@ -1111,19 +1100,19 @@ async def next_autopost_step(callback: CallbackQuery, state: FSMContext):
     elif current_step == 'categories':
         categories = data.get('categories', [])
         if not categories:
-            await callback.answer("❌ Выберите хотя бы одну категорию!", show_alert=True)
+            await callback.answer("❌ Select at least one category!", show_alert=True)
             return
 
         await state.set_state(UserStates.selecting_style)
         await state.update_data(current_step='style', step_number=3)
 
         text = (
-            "🎨 <b>Шаг 3/4: Выбор стиля</b>\n\n"
-            "Выберите стиль оформления постов:\n\n"
-            "🎩 <b>Формальный</b> - деловой стиль\n"
-            "😎 <b>Разговорный</b> - дружелюбный тон\n"
-            "🤪 <b>Мемный</b> - юмористический стиль\n\n"
-            "🎯 <b>Выбранный стиль:</b> Не выбран"
+            "🎨 <b>Step 3/4: Style Selection</b>\n\n"
+            "Select post style:\n\n"
+            "🎩 <b>Formal</b> - business style\n"
+            "😎 <b>Casual</b> - friendly tone\n"
+            "🤪 <b>Meme</b> - humorous style\n\n"
+            "🎯 <b>Selected style:</b> Not selected"
         )
 
         from bot.keyboards import get_style_selection_keyboard_new
@@ -1132,19 +1121,19 @@ async def next_autopost_step(callback: CallbackQuery, state: FSMContext):
     elif current_step == 'style':
         style = data.get('style', '')
         if not style:
-            await callback.answer("❌ Выберите стиль!", show_alert=True)
+            await callback.answer("❌ Select a style!", show_alert=True)
             return
 
         await state.set_state(UserStates.selecting_schedule)
         await state.update_data(current_step='schedule', step_number=4)
 
         text = (
-            "⏰ <b>Шаг 4/4: Настройка расписания</b>\n\n"
-            "Выберите частоту публикации постов:\n\n"
-            "• 1️⃣ <b>1 раз в день</b> - для небольших каналов\n"
-            "• 2️⃣ <b>2 раза в день</b> - оптимальный вариант\n"
-            "• 3️⃣ <b>3 раза в день</b> - для активных каналов\n\n"
-            "🎯 <b>Выбранное расписание:</b> Не настроено"
+            "⏰ <b>Step 4/4: Schedule Setup</b>\n\n"
+            "Choose posting frequency:\n\n"
+            "• 1️⃣ <b>1 time per day</b> - for small channels\n"
+            "• 2️⃣ <b>2 times per day</b> - optimal choice\n"
+            "• 3️⃣ <b>3 times per day</b> - for active channels\n\n"
+            "🎯 <b>Selected schedule:</b> Not configured"
         )
 
         from bot.keyboards import get_schedule_selection_keyboard_new
@@ -1153,7 +1142,7 @@ async def next_autopost_step(callback: CallbackQuery, state: FSMContext):
     elif current_step == 'schedule':
         frequency = data.get('frequency', 0)
         if not frequency:
-            await callback.answer("❌ Выберите расписание!", show_alert=True)
+            await callback.answer("❌ Select a schedule!", show_alert=True)
             return
 
         await state.set_state(UserStates.confirming_settings)
@@ -1171,24 +1160,25 @@ async def toggle_category_new(callback: CallbackQuery, state: FSMContext):
     category = callback.data.replace("autopost_toggle_cat_", "")
 
     data = await state.get_data()
+    style = data.get('style', '')
     categories = data.get('categories', [])
 
     if category in categories:
         categories.remove(category)
-        status = "убрана"
+        status = "removed"
     else:
         categories.append(category)
-        status = "добавлена"
+        status = "added"
 
     await state.update_data(categories=categories)
 
-    selected_text = ', '.join([get_category_emoji_name(cat) for cat in categories]) if categories else "Пока не выбраны"
+    selected_text = ', '.join([get_category_emoji_name(cat) for cat in categories]) if categories else "Not selected yet"
 
     text = (
-        "📂 <b>Шаг 2/4: Выбор категорий</b>\n\n"
-        "Выберите категории новостей для автопостинга:\n\n"
-        "💡 <b>Совет:</b> Выбирайте 2-4 категории для лучшего качества\n\n"
-        f"🎯 <b>Выбранные категории:</b> {selected_text}"
+        "📂 <b>Step 2/4: Select categories</b>\n\n"
+        "Select news categories for autoposting:\n\n"
+        "💡 <b>Tip:</b> Choose 2-4 categories for the best quality\n\n"
+        f"🎯 <b>Selected categories:</b> {selected_text}"
     )
 
     from bot.keyboards import get_category_selection_keyboard_new
@@ -1198,24 +1188,19 @@ async def toggle_category_new(callback: CallbackQuery, state: FSMContext):
         parse_mode='HTML'
     )
 
-    await callback.answer(f"Категория {status}")
-
-
-@router.callback_query(F.data.startswith("autopost_set_style_"))
-async def set_style_new(callback: CallbackQuery, state: FSMContext):
-    style = callback.data.replace("autopost_set_style_", "")
+    await callback.answer(f"Category {status}")
 
     await state.update_data(style=style)
 
     style_text = get_style_emoji_name(style)
 
     text = (
-        "🎨 <b>Шаг 3/4: Выбор стиля</b>\n\n"
-        "Выберите стиль оформления постов:\n\n"
-        "🎩 <b>Формальный</b> - деловой стиль\n"
-        "😎 <b>Разговорный</b> - дружелюбный тон\n"
-        "🤪 <b>Мемный</b> - юмористический стиль\n\n"
-        f"🎯 <b>Выбранный стиль:</b> {style_text}"
+        "🎨 <b>Step 3/4: Style Selection</b>\n\n"
+        "Select post style:\n\n"
+        "🎩 <b>Formal</b> - business style\n"
+        "😎 <b>Conversational</b> - friendly tone\n"
+        "🤪 <b>Meme</b> - humorous style\n\n"
+        f"🎯 <b>Selected style:</b> {style_text}"
     )
 
     from bot.keyboards import get_style_selection_keyboard_new
@@ -1225,7 +1210,7 @@ async def set_style_new(callback: CallbackQuery, state: FSMContext):
         parse_mode='HTML'
     )
 
-    await callback.answer(f"Стиль установлен: {style_text}")
+    await callback.answer(f"Style set: {style_text}")
 
 
 @router.callback_query(F.data.startswith("autopost_set_schedule_"))
@@ -1235,20 +1220,20 @@ async def set_schedule_new(callback: CallbackQuery, state: FSMContext):
     await state.update_data(frequency=frequency)
 
     schedule_names = {
-        1: "1 раз в день (09:00)",
-        2: "2 раза в день (09:00, 21:00)",
-        3: "3 раза в день (09:00, 15:00, 21:00)"
+        1: "1 time per day (09:00)",
+        2: "2 times per day (09:00, 21:00)",
+        3: "3 times per day (09:00, 15:00, 21:00)"
     }
 
     schedule_text = schedule_names.get(frequency, "")
 
     text = (
-        "⏰ <b>Шаг 4/4: Настройка расписания</b>\n\n"
-        "Выберите частоту публикации постов:\n\n"
-        "• 1️⃣ <b>1 раз в день</b> - для небольших каналов\n"
-        "• 2️⃣ <b>2 раза в день</b> - оптимальный вариант\n"
-        "• 3️⃣ <b>3 раза в день</b> - для активных каналов\n\n"
-        f"🎯 <b>Выбранное расписание:</b> {schedule_text}"
+        "⏰ <b>Step 4/4: Set schedule</b>\n\n"
+        "Select post frequency:\n\n"
+        "• 1️⃣ <b>1 time per day</b> - for small channels\n"
+        "• 2️⃣ <b>2 times per day</b> - optimal\n"
+        "• 3️⃣ <b>3 times per day</b> - for active channels\n\n"
+        f"🎯 <b>Selected schedule:</b> {schedule_text}"
     )
 
     from bot.keyboards import get_schedule_selection_keyboard_new
@@ -1271,7 +1256,7 @@ async def save_autopost_settings(callback: CallbackQuery, state: FSMContext):
         frequency = data.get('frequency', 1)
 
         if not channels or not categories:
-            await callback.answer("❌ Не все настройки заполнены!", show_alert=True)
+            await callback.answer("❌ Not all settings are filled in!", show_alert=True)
             return
 
         async for db in get_db():
@@ -1281,7 +1266,7 @@ async def save_autopost_settings(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             await db.execute(
@@ -1311,12 +1296,12 @@ async def save_autopost_settings(callback: CallbackQuery, state: FSMContext):
             await db.commit()
 
             text = (
-                "✅ <b>Настройки автопостинга сохранены!</b>\n\n"
-                f"📺 <b>Каналы:</b> {len(channels)} шт.\n"
-                f"📂 <b>Категории:</b> {len(categories)} шт.\n"
-                f"🎨 <b>Стиль:</b> {get_style_emoji_name(style)}\n"
-                f"⏰ <b>Расписание:</b> {frequency} раз в день\n\n"
-                "🚀 Автопостинг активирован и будет работать по расписанию!"
+                "✅ <b>Autoposting settings saved!</b>\n\n"
+                f"📺 <b>Channels:</b> {len(channels)}\n"
+                f"📂 <b>Categories:</b> {len(categories)}\n"
+                f"🎨 <b>Style:</b> {get_style_emoji_name(style)}\n"
+                f"⏰ <b>Schedule:</b> {frequency} times per day\n\n"
+                "🚀 Autoposting is now active and will work according to the schedule!"
             )
 
             await send_text_only(callback, text, get_profile_keyboard())
@@ -1324,10 +1309,10 @@ async def save_autopost_settings(callback: CallbackQuery, state: FSMContext):
             break
 
     except Exception as e:
-        logging.error(f"Ошибка сохранения настроек автопостинга: {e}")
+        logging.error(f"Autoposting settings save error: {e}")
         await send_text_only(
             callback,
-            "❌ Произошла ошибка при сохранении настроек",
+            "❌ An error occurred while saving settings",
             get_profile_keyboard()
         )
 
@@ -1344,16 +1329,16 @@ async def back_autopost_step(callback: CallbackQuery, state: FSMContext):
         await state.update_data(current_step='channels', step_number=1)
 
         channels = data.get('channels', [])
-        channels_text = '\n'.join([f"• {ch}" for ch in channels]) if channels else "❌ Пока нет"
+        channels_text = '\n'.join([f"• {ch}" for ch in channels]) if channels else "❌ None yet"
 
         text = (
-            "📺 <b>Шаг 1/4: Настройка каналов</b>\n\n"
-            "📋 <b>Инструкция:</b>\n"
-            "1️⃣ Добавьте бота в ваш канал как администратора\n"
-            "2️⃣ Дайте права на 'Публикация сообщений'\n"
-            "3️⃣ Нажмите 'Добавить канал' и отправьте username\n\n"
-            "💡 Можно добавить несколько каналов\n\n"
-            f"📺 <b>Добавленные каналы:</b>\n{channels_text}"
+            "📺 <b>Step 1/4: Set up channels</b>\n\n"
+            "📋 <b>Instructions:</b>\n"
+            "1️⃣ Add the bot to your channel as an administrator\n"
+            "2️⃣ Grant 'Post messages' rights\n"
+            "3️⃣ Click 'Add channel' and send the username\n\n"
+            "💡 You can add multiple channels\n\n"
+            f"📺 <b>Added channels:</b>\n{channels_text}"
         )
 
         from bot.keyboards import get_autopost_step_keyboard
@@ -1365,13 +1350,13 @@ async def back_autopost_step(callback: CallbackQuery, state: FSMContext):
 
         categories = data.get('categories', [])
         selected_text = ', '.join(
-            [get_category_emoji_name(cat) for cat in categories]) if categories else "Пока не выбраны"
+            [get_category_emoji_name(cat) for cat in categories]) if categories else "Not selected yet"
 
         text = (
-            "📂 <b>Шаг 2/4: Выбор категорий</b>\n\n"
-            "Выберите категории новостей для автопостинга:\n\n"
-            "💡 <b>Совет:</b> Выбирайте 2-4 категории для лучшего качества\n\n"
-            f"🎯 <b>Выбранные категории:</b> {selected_text}"
+            "📂 <b>Step 2/4: Select categories</b>\n\n"
+            "Select news categories for autoposting:\n\n"
+            "💡 <b>Tip:</b> Choose 2-4 categories for the best quality\n\n"
+            f"🎯 <b>Selected categories:</b> {selected_text}"
         )
 
         from bot.keyboards import get_category_selection_keyboard_new
@@ -1382,15 +1367,15 @@ async def back_autopost_step(callback: CallbackQuery, state: FSMContext):
         await state.update_data(current_step='style', step_number=3)
 
         style = data.get('style', '')
-        style_text = get_style_emoji_name(style) if style else "Не выбран"
+        style_text = get_style_emoji_name(style) if style else "Not selected"
 
         text = (
-            "🎨 <b>Шаг 3/4: Выбор стиля</b>\n\n"
-            "Выберите стиль оформления постов:\n\n"
-            "🎩 <b>Формальный</b> - деловой стиль\n"
-            "😎 <b>Разговорный</b> - дружелюбный тон\n"
-            "🤪 <b>Мемный</b> - юмористический стиль\n\n"
-            f"🎯 <b>Выбранный стиль:</b> {style_text}"
+            "🎨 <b>Step 3/4: Select style</b>\n\n"
+            "Select post style:\n\n"
+            "🎩 <b>Formal</b> - business style\n"
+            "😎 <b>Conversational</b> - friendly tone\n"
+            "🤪 <b>Meme</b> - humorous style\n\n"
+            f"🎯 <b>Selected style:</b> {style_text}"
         )
 
         from bot.keyboards import get_style_selection_keyboard_new
@@ -1402,19 +1387,19 @@ async def back_autopost_step(callback: CallbackQuery, state: FSMContext):
 
         frequency = data.get('frequency', 0)
         schedule_names = {
-            1: "1 раз в день (09:00)",
-            2: "2 раза в день (09:00, 21:00)",
-            3: "3 раза в день (09:00, 15:00, 21:00)"
+            1: "1 time per day (09:00)",
+            2: "2 times per day (09:00, 21:00)",
+            3: "3 times per day (09:00, 15:00, 21:00)"
         }
-        schedule_text = schedule_names.get(frequency, "Не настроено")
+        schedule_text = schedule_names.get(frequency, "Not set")
 
         text = (
-            "⏰ <b>Шаг 4/4: Настройка расписания</b>\n\n"
-            "Выберите частоту публикации постов:\n\n"
-            "• 1️⃣ <b>1 раз в день</b> - для небольших каналов\n"
-            "• 2️⃣ <b>2 раза в день</b> - оптимальный вариант\n"
-            "• 3️⃣ <b>3 раза в день</b> - для активных каналов\n\n"
-            f"🎯 <b>Выбранное расписание:</b> {schedule_text}"
+            "⏰ <b>Step 4/4: Set schedule</b>\n\n"
+            "Select post frequency:\n\n"
+            "• 1️⃣ <b>1 time per day</b> - for small channels\n"
+            "• 2️⃣ <b>2 times per day</b> - optimal\n"
+            "• 3️⃣ <b>3 times per day</b> - for active channels\n\n"
+            f"🎯 <b>Selected schedule:</b> {schedule_text}"
         )
 
         from bot.keyboards import get_schedule_selection_keyboard_new
@@ -1433,8 +1418,8 @@ async def cancel_autopost_setup(callback: CallbackQuery, state: FSMContext):
     await state.clear()
 
     text = (
-        "❌ <b>Настройка автопостинга отменена</b>\n\n"
-        "Вы можете вернуться к настройке в любое время через профиль."
+        "❌ <b>Autoposting setup canceled</b>\n\n"
+        "You can return to setup anytime via your profile."
     )
 
     await send_text_only(callback, text, get_profile_keyboard())
@@ -1451,7 +1436,7 @@ async def edit_existing_autopost(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             settings_result = await db.execute(
@@ -1466,8 +1451,8 @@ async def edit_existing_autopost(callback: CallbackQuery, state: FSMContext):
 
             if not settings:
                 text = (
-                    "❌ <b>Нет настроек для редактирования</b>\n\n"
-                    "Сначала создайте новую настройку автопостинга."
+                    "❌ <b>No settings to edit</b>\n\n"
+                    "First, create a new autoposting setting."
                 )
                 from bot.keyboards import get_autopost_setup_keyboard
                 await send_text_only(callback, text, get_autopost_setup_keyboard())
@@ -1494,15 +1479,15 @@ async def edit_existing_autopost(callback: CallbackQuery, state: FSMContext):
                 'frequency': frequency
             })
 
-            summary_text += "\n\n💡 Нажмите 'Редактировать' для изменения настроек"
+            summary_text += "\n\n💡 Click 'Edit' to change the settings"
 
             from bot.keyboards import get_confirmation_keyboard_autopost
             await send_text_only(callback, summary_text, get_confirmation_keyboard_autopost())
             break
 
     except Exception as e:
-        logging.error(f"Ошибка загрузки настроек для редактирования: {e}")
-        text = "❌ Произошла ошибка при загрузке настроек"
+        logging.error(f"Error loading settings for editing: {e}")
+        text = "❌ An error occurred while loading settings"
         from bot.keyboards import get_autopost_setup_keyboard
         await send_text_only(callback, text, get_autopost_setup_keyboard())
 
@@ -1519,7 +1504,7 @@ async def delete_autopost_settings(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             result = await db.execute(
@@ -1535,22 +1520,22 @@ async def delete_autopost_settings(callback: CallbackQuery, state: FSMContext):
 
             if result.rowcount > 0:
                 text = (
-                    "✅ <b>Настройки автопостинга удалены</b>\n\n"
-                    f"Удалено настроек: {result.rowcount}\n\n"
-                    "Автопостинг остановлен. Вы можете создать новую настройку в любое время."
+                    "✅ <b>Autoposting settings deleted</b>\n\n"
+                    f"Deleted settings: {result.rowcount}\n\n"
+                    "Autoposting stopped. You can create a new setting at any time."
                 )
             else:
                 text = (
-                    "⚠️ <b>Настройки автопостинга не найдены</b>\n\n"
-                    "У вас нет активных настроек для удаления."
+                    "⚠️ <b>No autoposting settings found</b>\n\n"
+                    "You have no active settings to delete."
                 )
 
             await send_text_only(callback, text, get_profile_keyboard())
             break
 
     except Exception as e:
-        logging.error(f"Ошибка удаления настроек автопостинга: {e}")
-        text = "❌ Произошла ошибка при удалении настроек"
+        logging.error(f"Error deleting autoposting settings: {e}")
+        text = "❌ An error occurred while deleting settings"
         await send_text_only(callback, text, get_profile_keyboard())
 
     await callback.answer()
@@ -1562,7 +1547,6 @@ async def back_to_profile(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "manual_post")
 async def show_manual_post_menu(callback: CallbackQuery, state: FSMContext):
-    """Меню ручной отправки постов"""
     try:
         async for db in get_db():
             user_result = await db.execute(
@@ -1571,7 +1555,7 @@ async def show_manual_post_menu(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             subscription_result = await db.execute(
@@ -1587,10 +1571,10 @@ async def show_manual_post_menu(callback: CallbackQuery, state: FSMContext):
 
             if not active_subscription:
                 text = (
-                    "📤 <b>Ручная отправка постов</b>\n\n"
-                    "❌ <b>Требуется активная подписка</b>\n\n"
-                    "Для ручной отправки постов необходима активная подписка.\n\n"
-                    "💎 Приобретите подписку для доступа к функции"
+                    "📤 <b>Manual post sending</b>\n\n"
+                    "❌ <b>Active subscription required</b>\n\n"
+                    "An active subscription is required to send posts manually.\n\n"
+                    "💎 Purchase a subscription to access this feature"
                 )
                 await send_text_only(callback, text, get_profile_keyboard())
                 await callback.answer()
@@ -1608,24 +1592,24 @@ async def show_manual_post_menu(callback: CallbackQuery, state: FSMContext):
 
             if not setting:
                 text = (
-                    "📤 <b>Ручная отправка постов</b>\n\n"
-                    "❌ <b>Автопостинг не настроен</b>\n\n"
-                    "Сначала настройте автопостинг в разделе 'Настройки постинга'.\n\n"
-                    "💡 После настройки здесь появятся функции ручной отправки"
+                    "📤 <b>Manual post sending</b>\n\n"
+                    "❌ <b>Autoposting not configured</b>\n\n"
+                    "First, configure autoposting in the 'Posting settings' section.\n\n"
+                    "💡 After setup, manual post features will appear here"
                 )
                 await send_text_only(callback, text, get_profile_keyboard())
                 await callback.answer()
                 return
 
             text = (
-                "📤 <b>Ручная отправка постов</b>\n\n"
-                "Выберите действие:\n\n"
-                "🚀 <b>Отправить сейчас</b> - немедленная отправка поста\n"
-                "⏰ <b>Запланировать</b> - отправка в указанное время\n"
-                "📊 <b>Тестовый пост</b> - отправка тестового сообщения\n\n"
-                f"📺 <b>Канал:</b> {setting.channel_id}\n"
-                f"📂 <b>Категория:</b> {get_category_emoji_name(setting.category)}\n"
-                f"🎨 <b>Стиль:</b> {get_style_emoji_name(setting.style)}"
+                "📤 <b>Manual post sending</b>\n\n"
+                "Choose an action:\n\n"
+                "🚀 <b>Send now</b> - send a post immediately\n"
+                "⏰ <b>Schedule</b> - send at a specified time\n"
+                "📊 <b>Test post</b> - send a test message\n\n"
+                f"📺 <b>Channel:</b> {setting.channel_id}\n"
+                f"📂 <b>Category:</b> {get_category_emoji_name(setting.category)}\n"
+                f"🎨 <b>Style:</b> {get_style_emoji_name(setting.style)}"
             )
 
             from bot.keyboards import get_manual_post_keyboard
@@ -1633,15 +1617,14 @@ async def show_manual_post_menu(callback: CallbackQuery, state: FSMContext):
             break
 
     except Exception as e:
-        logging.error(f"Ошибка показа меню ручной отправки: {e}")
-        await send_text_only(callback, "❌ Произошла ошибка", get_profile_keyboard())
+        logging.error(f"Error showing manual post menu: {e}")
+        await send_text_only(callback, "❌ An error occurred", get_profile_keyboard())
 
     await callback.answer()
 
 
 @router.callback_query(F.data == "manual_send_now")
 async def manual_send_now(callback: CallbackQuery, state: FSMContext):
-    """Отправка поста прямо сейчас"""
     try:
         async for db in get_db():
             user_result = await db.execute(
@@ -1650,7 +1633,7 @@ async def manual_send_now(callback: CallbackQuery, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await callback.answer("❌ Пользователь не найден", show_alert=True)
+                await callback.answer("❌ User not found", show_alert=True)
                 return
 
             settings_result = await db.execute(
@@ -1664,7 +1647,7 @@ async def manual_send_now(callback: CallbackQuery, state: FSMContext):
             setting = settings_result.scalar_one_or_none()
 
             if not setting:
-                await callback.answer("❌ Настройки автопостинга не найдены", show_alert=True)
+                await callback.answer("❌ Auto-posting settings not found", show_alert=True)
                 return
 
             send_manual_post.delay(
@@ -1675,32 +1658,31 @@ async def manual_send_now(callback: CallbackQuery, state: FSMContext):
             )
 
             text = (
-                "🚀 <b>Пост отправляется!</b>\n\n"
-                f"📺 Канал: {setting.channel_id}\n"
-                f"📂 Категория: {get_category_emoji_name(setting.category)}\n"
-                f"🎨 Стиль: {get_style_emoji_name(setting.style)}\n\n"
-                "⏳ Пост будет опубликован в течение минуты"
+                "🚀 <b>Post is being sent!</b>\n\n"
+                f"📺 Channel: {setting.channel_id}\n"
+                f"📂 Category: {get_category_emoji_name(setting.category)}\n"
+                f"🎨 Style: {get_style_emoji_name(setting.style)}\n\n"
+                "⏳ The post will be published within a minute"
             )
 
             await send_text_only(callback, text, get_profile_keyboard())
             break
 
     except Exception as e:
-        logging.error(f"Ошибка ручной отправки: {e}")
-        await callback.answer("❌ Ошибка при отправке поста", show_alert=True)
+        logging.error(f"Error sending manual post: {e}")
+        await callback.answer("❌ Error sending post", show_alert=True)
 
 
 @router.callback_query(F.data == "manual_schedule")
 async def manual_schedule_setup(callback: CallbackQuery, state: FSMContext):
-    """Настройка запланированной отправки"""
     await state.set_state(UserStates.scheduling_manual_post)
 
     text = (
-        "⏰ <b>Запланировать отправку поста</b>\n\n"
-        "Отправьте время в формате ЧЧ:ММ\n"
-        "Например: <code>15:23</code> или <code>09:00</code>\n\n"
-        "📅 Если время уже прошло сегодня, пост будет отправлен завтра\n\n"
-        "💡 Введите время:"
+        "⏰ <b>Schedule a post</b>\n\n"
+        "Send the time in HH:MM format\n"
+        "For example: <code>15:23</code> or <code>09:00</code>\n\n"
+        "📅 If the time has already passed today, the post will be sent tomorrow\n\n"
+        "💡 Enter the time:"
     )
 
     from bot.keyboards import get_manual_schedule_cancel_keyboard
@@ -1710,7 +1692,6 @@ async def manual_schedule_setup(callback: CallbackQuery, state: FSMContext):
 
 @router.message(UserStates.scheduling_manual_post)
 async def process_schedule_time(message: Message, state: FSMContext):
-    """Обработка времени для запланированной отправки"""
     time_input = message.text.strip()
 
     try:
@@ -1719,8 +1700,8 @@ async def process_schedule_time(message: Message, state: FSMContext):
             raise ValueError
     except (ValueError, IndexError):
         await message.answer(
-            "❌ <b>Неверный формат времени!</b>\n\n"
-            "Используйте формат ЧЧ:ММ (например: 15:23)",
+            "❌ <b>Invalid time format!</b>\n\n"
+            "Use the HH:MM format (for example: 15:23)",
             parse_mode='HTML'
         )
         return
@@ -1733,7 +1714,7 @@ async def process_schedule_time(message: Message, state: FSMContext):
             user = user_result.scalar_one_or_none()
 
             if not user:
-                await message.answer("❌ Пользователь не найден")
+                await message.answer("❌ User not found")
                 return
 
             settings_result = await db.execute(
@@ -1747,7 +1728,7 @@ async def process_schedule_time(message: Message, state: FSMContext):
             setting = settings_result.scalar_one_or_none()
 
             if not setting:
-                await message.answer("❌ Настройки автопостинга не найдены")
+                await message.answer("❌ Autoposting settings not found")
                 return
 
             schedule_post_at_time.delay(
@@ -1764,17 +1745,17 @@ async def process_schedule_time(message: Message, state: FSMContext):
 
             if target_datetime <= now:
                 target_datetime += timedelta(days=1)
-                day_text = "завтра"
+                day_text = "tomorrow"
             else:
-                day_text = "сегодня"
+                day_text = "today"
 
             text = (
-                "✅ <b>Пост запланирован!</b>\n\n"
-                f"⏰ Время отправки: {time_input} ({day_text})\n"
-                f"📺 Канал: {setting.channel_id}\n"
-                f"📂 Категория: {get_category_emoji_name(setting.category)}\n"
-                f"🎨 Стиль: {get_style_emoji_name(setting.style)}\n\n"
-                "🔔 Пост будет автоматически отправлен в указанное время"
+                "✅ <b>Post scheduled!</b>\n\n"
+                f"⏰ Send time: {time_input} ({day_text})\n"
+                f"📺 Channel: {setting.channel_id}\n"
+                f"📂 Category: {get_category_emoji_name(setting.category)}\n"
+                f"🎨 Style: {get_style_emoji_name(setting.style)}\n\n"
+                "🔔 The post will be sent automatically at the specified time"
             )
 
             await message.answer(text, reply_markup=get_profile_keyboard(), parse_mode='HTML')
@@ -1782,5 +1763,5 @@ async def process_schedule_time(message: Message, state: FSMContext):
             break
 
     except Exception as e:
-        logging.error(f"Ошибка планирования поста: {e}")
-        await message.answer("❌ Ошибка при планировании поста")
+        logging.error(f"Error scheduling post: {e}")
+        await message.answer("❌ Error scheduling post")
