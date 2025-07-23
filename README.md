@@ -17,7 +17,7 @@ This project is a Telegram bot for automatic posting and content management in c
 - Redis — queue broker and state storage
 - SQLAlchemy, asyncpg — async PostgreSQL support
 - Docker/Docker Compose — containerization
-- FastAPI (optional)
+- FastAPI
 
 ## Project Structure
 ```
